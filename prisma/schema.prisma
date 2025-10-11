@@ -1,12 +1,132 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
+}
+
+// Bảng Users
+model User {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  name          String?
+  dob           DateTime?     // ngày sinh (optional)
+  role          Role          @default(LEARNER)
+  walletAddress String?       @unique
+  phone         String?   
+  address       String?
+  avatarUrl     String?
+  examResults   ExamResult[]
+  certificates  Certificate[]
+  notifications Notification[]
+  createdAt     DateTime      @default(now())
+
+  notificationReads NotificationRead[]
+}
+
+// Bảng Courses
+model Course {
+  id            Int           @id @default(autoincrement())
+  title         String
+  description   String?
+  category      String
+  startDate     DateTime?     
+  endDate       DateTime?     
+  examDateExpected DateTime?  
+  status        CourseStatus  @default(UPCOMING) 
+  isPublic      Boolean       @default(true)     
+  thumbnail        String?
+  createdAt     DateTime      @default(now())
+
+  examSessions  ExamSession[]
+  certificates  Certificate[]
+  notifications Notification[] 
+}
+
+model ExamSession {
+  id        Int           @id @default(autoincrement())
+  courseId  Int
+  course    Course        @relation(fields: [courseId], references: [id])
+  room      String
+  date      DateTime
+  capacity  Int
+  results   ExamResult[]
+}
+
+model ExamResult {
+  id            Int          @id @default(autoincrement())
+  examSessionId Int
+  userId        Int
+  examSession   ExamSession  @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score         Int
+  status        ExamStatus
+}
+
+
+//  Bảng Notifications
+model Notification {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  targetRole  Role?
+  userId      Int?      
+  courseId    Int?      
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id])
+  course      Course?   @relation(fields: [courseId], references: [id])
+
+  reads       NotificationRead[]
+}
+
+model NotificationRead {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  notificationId Int
+  readAt         DateTime     @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationId])
+}
+
+
+
+model Certificate {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  courseId  Int
+  tokenId   String   @unique   // ID NFT trên blockchain
+  ipfsCid   String   @unique   // CID của chứng chỉ trên IPFS
+  issuedAt  DateTime @default(now())
+  revoked   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
+}
+
+
+//  Enum Role
+enum Role {
+  ADMIN
+  LEARNER
+}
+
+// Enum ExamStatus
+enum ExamStatus {
+  PENDING
+  PASS
+  FAIL
+}
+
+enum CourseStatus {
+  UPCOMING   // Chưa bắt đầu
+  ONGOING    // Đang học
+  COMPLETED  // Hoàn thành
+  CLOSED     // Kết thúc
 }

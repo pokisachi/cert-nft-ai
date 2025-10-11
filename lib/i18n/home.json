@@ -1,0 +1,61 @@
+{
+  "home": {
+    "hero": {
+      "title": "Cấp & Xác Thực Chứng Chỉ Minh Bạch với NFT, AI & WebGIS",
+      "subtitle": "Nền tảng chứng chỉ số chống giả mạo cho giáo dục. Biến kết quả học tập thành SBT/NFT có thể xác minh tức thì, minh bạch trên blockchain.",
+      "ctaPrimary": "Khám phá nền tảng",
+      "ctaSecondary": "Xem Demo",
+      "badges": ["New • AI Verification", "Zero Commission Verify"]
+    },
+    "features": {
+      "ai": {
+        "title": "AI OCR & Dedup",
+        "oneliner": "Nhận dạng chứng chỉ tự động, loại trừ trùng lặp ngay khi phát hành.",
+        "bullets": [
+          "OCR thông minh, chuẩn hoá dữ liệu",
+          "So khớp tên, mã khoá, điểm, ngày cấp",
+          "Cảnh báo rủi ro ngay trong dashboard"
+        ]
+      },
+      "sbt": {
+        "title": "Blockchain SBT (Soulbound)",
+        "oneliner": "Dấu vết phát hành bất biến, xác minh trong một chạm.",
+        "bullets": [
+          "Không thể giả mạo/thu hồi có dấu vết",
+          "Tra cứu on-chain tức thì",
+          "Tương thích hệ sinh thái Web3"
+        ]
+      },
+      "gis": {
+        "title": "WebGIS Verification",
+        "oneliner": "Xác định địa điểm cơ sở đào tạo & khu vực học viên rõ ràng.",
+        "bullets": [
+          "Bản đồ tương tác, lọc theo cơ sở/khoá học",
+          "Heatmap phân bố chứng chỉ",
+          "Hỗ trợ kiểm tra trực quan khi xác thực"
+        ]
+      }
+    },
+    "stats": {
+      "headline": "Minh bạch ở quy mô lớn.",
+      "items": [
+        {"value": "5K+", "label": "Chứng chỉ phát hành"},
+        {"value": "100+", "label": "Cơ sở đào tạo"},
+        {"value": "0%", "label": "Gian lận xác minh"}
+      ]
+    },
+    "demo": {
+      "tagline": "Chứng chỉ → NFT SBT • Xác minh trong 1 chạm",
+      "alt": "Giao diện dashboard AI & blockchain xác thực chứng chỉ"
+    },
+    "footer": {
+      "tagline": "FnNFT – Hạ tầng mở cho giáo dục minh bạch.",
+      "subline": "© 2025 FnNFT • Blockchain • AI • WebGIS",
+      "links": ["Tài liệu", "GitHub", "Liên hệ", "Chính sách", "Demo"]
+    },
+    "seo": {
+      "title": "FnNFT – Nền tảng chứng chỉ NFT cho giáo dục (Blockchain, AI, WebGIS)",
+      "description": "Cấp & xác thực chứng chỉ minh bạch với NFT/SBT, AI OCR & WebGIS. Chống giả mạo, tra cứu on-chain, xác minh tức thì cho cơ sở đào tạo & doanh nghiệp."
+    }
+  }
+}
