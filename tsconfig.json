@@ -25,7 +25,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["*"],
-      "@/components/*": ["./components/*", "./app/components/*"]
+
     },
     "incremental": true,
     "plugins": [

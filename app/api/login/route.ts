@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { Magic } from "@magic-sdk/admin";
 import { cookies } from "next/headers";

@@ -18,11 +18,16 @@ const vi = {
   registerCourse: 'Đăng ký khóa học',
   loading: 'Đang tải…',
   error: 'Đã có lỗi xảy ra.',
-};
-const en = { ...vi, dashboard: 'Dashboard', myCourses: 'My Courses', myCertificates: 'My Certificates', announcements: 'Announcements', viewAll: 'View All', profile: 'Profile', empty_courses: 'No courses yet', empty_certificates: 'You will see certificates after passing', empty_announcements: 'No announcements', retry: 'Retry', markRead: 'Mark as read', new: 'NEW', downloadPdf: 'Download PDF', share: 'Share', view: 'View', openOnChain: 'Open on-chain', registerCourse: 'Browse courses', loading: 'Loading…', error: 'Something went wrong.' };
-const dict = { vi, en };
+} as const;
 
-export function t(key: keyof typeof vi) {
-  const lang = (process.env.NEXT_PUBLIC_I18N_DEFAULT || 'vi') as 'vi' | 'en';
-  return (dict[lang] as any)[key] ?? key;
+
+const dict = { vi } as const;
+
+type SupportedLang = keyof typeof dict;
+type TranslationKey = keyof typeof vi;
+
+export function t(key: TranslationKey): string {
+  const lang = (process.env.NEXT_PUBLIC_I18N_DEFAULT || 'vi') as SupportedLang;
+  const translationSet = dict[lang];
+  return translationSet[key] ?? key;
 }

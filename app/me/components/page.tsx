@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import Pagination from '../components/Pagination';
+import Pagination from '@/components/Pagination';
 import type { AnnouncementsResponse, AnnouncementItem } from '../hooks/types';
 
 const PAGE_SIZE = 20;

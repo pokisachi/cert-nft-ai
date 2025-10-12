@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getMagic } from "@/lib/magic";
 import { motion } from "framer-motion";
 import { toast } from "@/components/ui/use-toast"; // ✅ dùng hệ thống toast của shadcn
+import { useAuth } from "@/hooks/useAuth"; 
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState("");

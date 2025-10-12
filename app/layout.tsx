@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
+import HeaderWrapper from "@/components/layout/HeaderWrapper";
 import Footer from "@/components/Footer";
 import QueryProvider from "@/providers/QueryProvider";
 
@@ -10,12 +10,17 @@ export const metadata: Metadata = {
     "Cấp & xác thực chứng chỉ minh bạch với NFT/SBT, AI OCR & WebGIS. Chống giả mạo, tra cứu on-chain, xác minh tức thì cho cơ sở đào tạo & doanh nghiệp.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="vi">
       <body className="min-h-screen flex flex-col bg-gray-50">
         <QueryProvider>
-          <Header />
+          {/* ✅ Header được xử lý tách riêng trong client component */}
+          <HeaderWrapper />
           <main className="flex-1">{children}</main>
           <Footer />
         </QueryProvider>
