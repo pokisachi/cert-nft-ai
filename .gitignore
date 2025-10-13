@@ -1,1 +1,35 @@
-node_modules
+# --- ENVIRONMENT FILES ---
+.env
+.env.local
+.env.development
+.env.production
+
+# --- NODE & BUILD ---
+node_modules/
+.next/
+dist/
+out/
+coverage/
+
+# --- TESTS ---
+__tests__/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+
+# --- SYSTEM FILES ---
+.DS_Store
+Thumbs.db
+*.log
+*.lock
+*.tmp
+
+# --- TYPESCRIPT & EDITOR ---
+*.tsbuildinfo
+.vscode/
+.idea/
+
+# --- PRISMA & DATABASE CACHE ---
+prisma/dev.db
+prisma/migrations/
