@@ -7,7 +7,7 @@
 .env.*
 !.env.example
 
-# --- NODE & BUILD ---
+# --- NODE & BUILD OUTPUT ---
 node_modules/
 .next/
 out/
@@ -27,7 +27,7 @@ yarn-error.log
 debug/
 logs/
 
-# --- TESTS ---
+# --- TEST FILES ---
 __tests__/
 *.test.js
 *.spec.js
@@ -49,23 +49,16 @@ Thumbs.db
 # --- PRISMA & DATABASE CACHE ---
 prisma/dev.db
 prisma/migrations/
-!.prisma/schema.prisma  # vẫn giữ schema để người khác có thể migrate
-
-# --- PUBLIC UPLOADS ---
-public/avatars/
-public/courses/
-public/tmp/
-uploads/
-tmp/
+!.prisma/schema.prisma   # Giữ schema để migrate được
 
 # --- ENVIRONMENT-SPECIFIC ---
-# Bỏ qua các file nhạy cảm / tạm dùng trong deploy hoặc CI
 .vercel/
 .env.local
 .env.production
 .env.development
 .env.test
 
-# --- MISC ---
-package-lock.json
+# --- MISC / PROJECT META ---
+# Lock files có thể bỏ qua nếu không cần đồng bộ giữa các máy
 pnpm-lock.yaml
+package-lock.json
