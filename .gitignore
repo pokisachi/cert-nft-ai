@@ -1,15 +1,31 @@
+# ========================================================
+# 🚀 GITIGNORE - CERT NFT AI PROJECT (Next.js + Prisma)
+# ========================================================
+
 # --- ENVIRONMENT FILES ---
 .env
-.env.local
-.env.development
-.env.production
+.env.*
+!.env.example
 
 # --- NODE & BUILD ---
 node_modules/
 .next/
-dist/
 out/
+dist/
+build/
 coverage/
+.npm/
+.pnpm-debug.log
+yarn-error.log
+
+# --- LOGS & TEMP FILES ---
+*.log
+*.tmp
+*.lock
+*.pid
+*.seed
+debug/
+logs/
 
 # --- TESTS ---
 __tests__/
@@ -21,15 +37,35 @@ __tests__/
 # --- SYSTEM FILES ---
 .DS_Store
 Thumbs.db
-*.log
-*.lock
-*.tmp
+*.swp
+*.swo
 
 # --- TYPESCRIPT & EDITOR ---
 *.tsbuildinfo
 .vscode/
 .idea/
+*.code-workspace
 
 # --- PRISMA & DATABASE CACHE ---
 prisma/dev.db
 prisma/migrations/
+!.prisma/schema.prisma  # vẫn giữ schema để người khác có thể migrate
+
+# --- PUBLIC UPLOADS ---
+public/avatars/
+public/courses/
+public/tmp/
+uploads/
+tmp/
+
+# --- ENVIRONMENT-SPECIFIC ---
+# Bỏ qua các file nhạy cảm / tạm dùng trong deploy hoặc CI
+.vercel/
+.env.local
+.env.production
+.env.development
+.env.test
+
+# --- MISC ---
+package-lock.json
+pnpm-lock.yaml
