@@ -1,43 +1,75 @@
-import * as React from 'react';
+import * as React from "react";
 
-interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
-  children: React.ReactNode;
-}
+// ---------- Table Container ----------
+export const Table = ({
+  children,
+  className = "",
+  ...props
+}: React.TableHTMLAttributes<HTMLTableElement>) => (
+  <div className="overflow-x-auto">
+    <table
+      className={`min-w-full border border-gray-200 text-sm rounded ${className}`}
+      {...props}
+    >
+      {children}
+    </table>
+  </div>
+);
 
-interface TableSectionProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  children: React.ReactNode;
-}
-
-interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
-  children: React.ReactNode;
-}
-
-interface TableCellProps extends React.HTMLAttributes<HTMLTableCellElement> {
-  children: React.ReactNode;
-}
-
-export const Table = ({ children, className = '', ...props }: TableProps) => (
-  <table className={`min-w-full border text-sm ${className}`} {...props}>
+// ---------- Header Section ----------
+export const TableHeader = ({
+  children,
+  className = "",
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) => (
+  <thead className={`bg-gray-100 ${className}`} {...props}>
     {children}
-  </table>
+  </thead>
 );
 
-export const TableHeader = ({ children, className = '', ...props }: TableSectionProps) => (
-  <thead className={className} {...props}>{children}</thead>
+// ---------- Body Section ----------
+export const TableBody = ({
+  children,
+  className = "",
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) => (
+  <tbody className={className} {...props}>
+    {children}
+  </tbody>
 );
 
-export const TableBody = ({ children, className = '', ...props }: TableSectionProps) => (
-  <tbody className={className} {...props}>{children}</tbody>
+// ---------- Row ----------
+export const TableRow = ({
+  children,
+  className = "",
+  ...props
+}: React.HTMLAttributes<HTMLTableRowElement>) => (
+  <tr className={`border-b hover:bg-gray-50 ${className}`} {...props}>
+    {children}
+  </tr>
 );
 
-export const TableRow = ({ children, className = '', ...props }: TableRowProps) => (
-  <tr className={`border-b ${className}`} {...props}>{children}</tr>
+// ---------- Header Cell ----------
+export const TableHead = ({
+  children,
+  className = "",
+  ...props
+}: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+  <th
+    className={`px-4 py-2 text-left font-semibold text-gray-700 ${className}`}
+    {...props}
+  >
+    {children}
+  </th>
 );
 
-export const TableHead = ({ children, className = '', ...props }: TableCellProps) => (
-  <th className={`px-3 py-2 text-left font-semibold ${className}`} {...props}>{children}</th>
-);
-
-export const TableCell = ({ children, className = '', ...props }: TableCellProps) => (
-  <td className={`px-3 py-2 ${className}`} {...props}>{children}</td>
+// ---------- Data Cell ----------
+export const TableCell = ({
+  children,
+  className = "",
+  ...props
+}: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+  <td className={`px-4 py-2 ${className}`} {...props}>
+    {children}
+  </td>
 );

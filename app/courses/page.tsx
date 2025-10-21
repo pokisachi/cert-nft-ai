@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,12 @@ export default function CoursesPage() {
       return res.json();
     },
   });
+
+  const courses = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+    ? data.data
+    : [];
 
   return (
     <>
@@ -59,13 +64,13 @@ export default function CoursesPage() {
               </Button>
             </AlertDescription>
           </Alert>
-        ) : data?.length === 0 ? (
+        ) : courses.length === 0 ? (
           <p className="text-center text-gray-500 py-10">
             Hiện chưa có khóa học public nào.
           </p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {data.map((course: any, i: number) => (
+            {courses.map((course: any, i: number) => (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -73,13 +78,13 @@ export default function CoursesPage() {
                 transition={{ delay: i * 0.05 }}
                 className="rounded-xl border border-gray-100 shadow-sm bg-white hover:shadow-lg transition overflow-hidden"
               >
+                {/* ✅ Hiển thị ảnh với field thumbnailUrl */}
                 <div className="relative w-full h-44 bg-gray-100">
-                  {course.thumbnail ? (
-                    <Image
-                      src={course.thumbnail}
+                  {course.thumbnailUrl ? (
+                    <img
+                      src={course.thumbnailUrl}
                       alt={course.title}
-                      fill
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400 text-sm">
@@ -87,6 +92,7 @@ export default function CoursesPage() {
                     </div>
                   )}
                 </div>
+
                 <div className="p-5 flex flex-col justify-between h-52">
                   <div>
                     <h3 className="text-lg font-semibold mb-2 text-gray-900 line-clamp-2">

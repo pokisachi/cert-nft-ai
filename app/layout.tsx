@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import HeaderWrapper from "@/components/layout/HeaderWrapper";
 import Footer from "@/components/Footer";
-import QueryProvider from "@/providers/QueryProvider";
+import  Providers  from "./providers"; 
 
 export const metadata: Metadata = {
   title: "FnNFT – Nền tảng chứng chỉ NFT cho giáo dục",
@@ -18,12 +18,12 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className="min-h-screen flex flex-col bg-gray-50">
-        <QueryProvider>
-          {/* ✅ Header được xử lý tách riêng trong client component */}
+        <Providers>
+          {/*  Header và Footer được render bên trong provider */}
           <HeaderWrapper />
           <main className="flex-1">{children}</main>
           <Footer />
-        </QueryProvider>
+        </Providers>
       </body>
     </html>
   );

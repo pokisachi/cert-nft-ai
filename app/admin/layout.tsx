@@ -141,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 pathname === "/admin" && "bg-indigo-100 text-indigo-700"
               )}
             >
-              📊 Dashboard
+              📊Dashboard
             </Link>
             <Link
               href="/admin/courses"
@@ -150,34 +150,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 pathname.startsWith("/admin/courses") && "bg-indigo-100 text-indigo-700"
               )}
             >
-              🎓 Quản lý Khóa học
+            Quản lý Khóa học
             </Link>
             <Link
-              href="/admin/users"
+              href="/admin/exams"
               className={cn(
                 "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
-                pathname.startsWith("/admin/users") && "bg-indigo-100 text-indigo-700"
+                pathname.startsWith("/admin/courses") && "bg-indigo-100 text-indigo-700"
               )}
             >
-              👥 Quản lý Người dùng
+            Quản lý Khóa thi
             </Link>
             <Link
-              href="/admin/certificates"
+              href="/admin/learners"
               className={cn(
                 "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
-                pathname.startsWith("/admin/certificates") && "bg-indigo-100 text-indigo-700"
+                pathname.startsWith("/admin/learners") && "bg-indigo-100 text-indigo-700"
               )}
             >
-              🪪 Chứng chỉ Blockchain
+            Quản lý Người dùng
             </Link>
             <Link
-              href="/admin/settings"
+              href="/admin/cc"
               className={cn(
                 "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
-                pathname.startsWith("/admin/settings") && "bg-indigo-100 text-indigo-700"
+                pathname.startsWith("/admin/cc") && "bg-indigo-100 text-indigo-700"
               )}
             >
-              ⚙️ Cài đặt
+            Quản lý Chứng chỉ
+            </Link>
+            <Link
+              href="/admin/announcements"
+              className={cn(
+                "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
+                pathname.startsWith("/admin/announcements") && "bg-indigo-100 text-indigo-700"
+              )}
+            >
+              Quản lý thông báo
             </Link>
           </nav>
         </aside>

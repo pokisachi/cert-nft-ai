@@ -1,123 +1,185 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
-}
-
-// Bảng Users
+// -------------------------
+// BẢNG USER
+// -------------------------
 model User {
-  id            Int           @id @default(autoincrement())
-  email         String        @unique
-  name          String?
-  dob           DateTime?     // ngày sinh (optional)
-  role          Role          @default(LEARNER)
-  walletAddress String?       @unique
-  phone         String?   
-  address       String?
-  avatarUrl     String?
-  examResults   ExamResult[]
-  certificates  Certificate[]
-  notifications Notification[]
-  createdAt     DateTime      @default(now())
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  name           String?
+  dob            DateTime?
+  idcard         String?
+  role           Role            @default(LEARNER)
+  walletAddress  String?         @unique
+  phone          String?
+  address        String?
+  avatarUrl      String?
+  createdAt      DateTime        @default(now())
 
+  // Hồ sơ cá nhân
+  profileCompleted Boolean       @default(false)
+  name_norm        String?
+  phone_e164       String?
+  row_version      BigInt        @default(1)
+
+  // Liên kết
+  examResults       ExamResult[]
+  certificates      Certificate[]
+  notifications     Notification[]
   notificationReads NotificationRead[]
+  enrollments       Enrollment[]
 }
 
-// Bảng Courses
+// -------------------------
+// BẢNG COURSE
+// -------------------------
 model Course {
-  id            Int           @id @default(autoincrement())
-  title         String
-  description   String?
-  category      String
-  startDate     DateTime?     
-  endDate       DateTime?     
-  examDateExpected DateTime?  
-  status        CourseStatus  @default(UPCOMING) 
-  isPublic      Boolean       @default(true)     
+  id               Int           @id @default(autoincrement())
+  title            String
+  description      String?
+  category         String
+  startDate        DateTime?
+  endDate          DateTime?
+  examDateExpected DateTime?
+  status           CourseStatus  @default(UPCOMING)
+  isPublic         Boolean       @default(true)
   thumbnail        String?
-  createdAt     DateTime      @default(now())
+  createdAt        DateTime      @default(now())
 
-  examSessions  ExamSession[]
-  certificates  Certificate[]
-  notifications Notification[] 
+  // Liên kết
+  examSessions     ExamSession[]
+  certificates     Certificate[]
+  notifications    Notification[]
+  enrollments      Enrollment[]
 }
 
+// -------------------------
+// BẢNG EXAM SESSION
+// -------------------------
 model ExamSession {
-  id        Int           @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   courseId  Int
-  course    Course        @relation(fields: [courseId], references: [id])
+  course    Course       @relation(fields: [courseId], references: [id])
   room      String
   date      DateTime
   capacity  Int
   results   ExamResult[]
 }
 
+// -------------------------
+// BẢNG EXAM RESULT
+// -------------------------
 model ExamResult {
-  id            Int          @id @default(autoincrement())
-  examSessionId Int
-  userId        Int
-  examSession   ExamSession  @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  score         Int
-  status        ExamStatus
+  id             Int            @id @default(autoincrement())
+  examSessionId  Int
+  userId         Int
+  score          Int
+  status         ExamStatus
+
+  examSession    ExamSession    @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 🔗 Quan hệ 1–1 tới Certificate
+  certificate    Certificate?   @relation("ExamResultToCertificate")
+
+  @@unique([examSessionId, userId]) // 1 user chỉ có 1 kết quả cho 1 ca thi
 }
 
-
-//  Bảng Notifications
+// -------------------------
+// BẢNG NOTIFICATION
+// -------------------------
 model Notification {
   id          Int       @id @default(autoincrement())
   title       String
   content     String
   targetRole  Role?
-  userId      Int?      
-  courseId    Int?      
+  userId      Int?
+  courseId    Int?
+  isPinned    Boolean   @default(false)
   createdAt   DateTime  @default(now())
 
   user        User?     @relation(fields: [userId], references: [id])
   course      Course?   @relation(fields: [courseId], references: [id])
-
   reads       NotificationRead[]
 }
 
+// -------------------------
+// BẢNG NOTIFICATION READ
+// -------------------------
 model NotificationRead {
-  id             Int          @id @default(autoincrement())
-  userId         Int
-  notificationId Int
-  readAt         DateTime     @default(now())
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  notificationId  Int
+  readAt          DateTime @default(now())
 
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification    Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, notificationId])
 }
 
-
-
+// -------------------------
+// BẢNG CERTIFICATE (NFT chứng chỉ)
+// -------------------------
 model Certificate {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  courseId  Int
-  tokenId   String   @unique   // ID NFT trên blockchain
-  ipfsCid   String   @unique   // CID của chứng chỉ trên IPFS
-  issuedAt  DateTime @default(now())
-  revoked   Boolean  @default(false)
-  updatedAt DateTime @updatedAt
+  id            Int           @id @default(autoincrement())
+  userId        Int
+  courseId      Int
+  examResultId  Int?          @unique // mỗi kết quả thi chỉ có 1 chứng chỉ
+  tokenId       String        @unique // NFT token ID
+  ipfsCid       String        @unique // CID IPFS
+  issuedAt      DateTime      @default(now())
+  revoked       Boolean       @default(false)
+  updatedAt     DateTime      @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
-  course    Course   @relation(fields: [courseId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  course        Course        @relation(fields: [courseId], references: [id])
+  examResult    ExamResult?   @relation("ExamResultToCertificate", fields: [examResultId], references: [id])
+
+  @@unique([userId, courseId]) // tránh cấp trùng cho cùng học viên + khóa
 }
 
+// -------------------------
+// BẢNG ENROLLMENT
+// -------------------------
+model Enrollment {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  courseId       Int
+  status         EnrollStatus @default(PENDING)
+  preferredDays  String?      // CSV: "Thứ 2,Thứ 4,Thứ 6"
+  preferredTime  String?      // "17h45–19h15"
+  enrolledAt     DateTime     @default(now())
 
-//  Enum Role
+  user           User         @relation(fields: [userId], references: [id])
+  course         Course       @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+// -------------------------
+// ENUM
+// -------------------------
+enum EnrollStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
+
 enum Role {
   ADMIN
   LEARNER
+  ALL
 }
 
-// Enum ExamStatus
 enum ExamStatus {
   PENDING
   PASS
@@ -125,8 +187,8 @@ enum ExamStatus {
 }
 
 enum CourseStatus {
-  UPCOMING   // Chưa bắt đầu
-  ONGOING    // Đang học
-  COMPLETED  // Hoàn thành
-  CLOSED     // Kết thúc
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CLOSED
 }

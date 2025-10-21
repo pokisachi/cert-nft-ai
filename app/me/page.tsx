@@ -1,103 +1,40 @@
-'use client'; 
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { User } from "lucide-react";
 
+export default function MePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
 
+  useEffect(() => {
+    async function fetchProfile() {
+      const res = await fetch("/api/me/profile");
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const data = await res.json();
+      setProfile(data);
 
- import Link from 'next/link'; 
+      // ⚠️ Nếu chưa hoàn thiện hồ sơ → chuyển sang form
+      if (data.profileCompleted === false) {
+        router.push("/me/profile?firstLogin=1");
+      }
+    }
+    fetchProfile();
+  }, [router]);
 
- import MyCoursesCard from './components/MyCoursesCard'; 
+  if (!profile) return <p>Đang tải...</p>;
 
- import MyCertificates from './components/MyCertificates'; 
-
- import MyAnnouncements from './components/MyAnnouncements'; 
-
- import { t } from '@/lib/i18n'; 
-
-
-
- export default function MeDashboardPage() { 
-
-   // TODO: Có thể gọi /api/me/profile để hiện avatar + tên 
-
-   const user = { name: 'Learner', avatarUrl: '' }; 
-
-
-
-   return ( 
-
-     <main className="mx-auto max-w-7xl p-4 md:p-8"> 
-
-       {/* Header */} 
-
-       <header className="mb-6 flex items-center justify-between"> 
-
-         <div className="flex items-center gap-3"> 
-
-           {/* <div 
-
-             className="h-10 w-10 rounded-full bg-gray-200" 
-
-             role="img" 
-
-             aria-label="User avatar" 
-
-             style={{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : undefined }} 
-
-           />  */}
-
-           <div> 
-
-             <h1 className="text-lg font-semibold">{t('dashboard')}</h1> 
-
-             <p className="text-sm text-gray-600">{user.name}</p> 
-
-           </div> 
-
-         </div> 
-
-         <Link 
-
-           href="/me/profile" 
-
-           className="text-sm underline focus:outline-none focus:ring-2 focus:ring-offset-2" 
-
-           aria-label="Go to profile" 
-
-         > 
-
-           {t('profile')} 
-
-         </Link> 
-
-       </header> 
-
-
-
-       {/* Grid */} 
-
-       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"> 
-
-         <div className="xl:col-span-2"> 
-
-           <MyCoursesCard /> 
-
-         </div> 
-
-         <div> 
-
-           <MyAnnouncements /> 
-
-         </div> 
-
-         <div className="xl:col-span-3"> 
-
-           <MyCertificates /> 
-
-         </div> 
-
-       </div> 
-
-     </main> 
-
-   ); 
-
- }
+  return (
+    
+    <div className="p-6">
+      <h1 className="text-xl font-bold">Xin chào, {profile.name || "Học viên"}!</h1>
+      <p>Email: {profile.email}</p>
+      <p>Tên: {profile.name}</p>
+      <p>Ngày tháng năm sinh: {profile.dob}</p>
+      <p>Địa chỉ ví: {profile.walletAddress}</p>
+    </div>
+  );
+}

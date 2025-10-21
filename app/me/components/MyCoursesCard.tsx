@@ -57,37 +57,38 @@ export default function MyCoursesCard() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Exam date</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Course</TableHead>
+                <TableHead>Start</TableHead>
+                <TableHead>End</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Exam date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data!.items.slice(0, 5).map((c: CourseRow) => (
+                <TableRow key={c.id} className="hover:bg-muted/40">
+                  <TableCell className="font-medium">{c.title}</TableCell>
+                  <TableCell>{fmtDate(c.startDate)}</TableCell>
+                  <TableCell>{fmtDate(c.endDate)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${statusStyle[c.status]} ring-1 ring-inset ring-black/5`}
+                      role="status"
+                      aria-label={`status ${c.status}`}
+                    >
+                      {c.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{fmtDate(c.examDate)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data!.items.slice(0, 5).map((c: CourseRow) => (
-                  <TableRow key={c.id} className="hover:bg-muted/40">
-                    <TableCell className="font-medium">{c.title}</TableCell>
-                    <TableCell>{fmtDate(c.startDate)}</TableCell>
-                    <TableCell>{fmtDate(c.endDate)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${statusStyle[c.status]} ring-1 ring-inset ring-black/5`}
-                        role="status"
-                        aria-label={`status ${c.status}`}
-                      >
-                        {c.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{fmtDate(c.examDate)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
         )}
       </CardContent>
     </Card>

@@ -6,7 +6,7 @@ const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 export type SessionPayload = {
   uid: number;
-  role: "ADMIN" | "LEARNER";
+  role: "ADMIN" | "LEARNER" | "ALL";
   email: string;
 };
 
