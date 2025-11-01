@@ -171,10 +171,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Quản lý Người dùng
             </Link>
             <Link
-              href="/admin/cc"
+              href="/admin/teachers"
               className={cn(
                 "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
-                pathname.startsWith("/admin/cc") && "bg-indigo-100 text-indigo-700"
+                pathname.startsWith("/admin/teachers") && "bg-indigo-100 text-indigo-700"
+              )}
+            >
+           Giáo Viên 
+            </Link>
+            <Link
+              href="/admin"
+              className={cn(
+                "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
+                pathname.startsWith("/admin") && "bg-indigo-100 text-indigo-700"
               )}
             >
             Quản lý Chứng chỉ
@@ -187,6 +196,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
             >
               Quản lý thông báo
+            </Link>
+            <Link
+              href="/admin/rooms"
+              className={cn(
+                "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
+                pathname.startsWith("/admin/rooms") && "bg-indigo-100 text-indigo-700"
+              )}
+            >
+              Rooms
             </Link>
           </nav>
         </aside>

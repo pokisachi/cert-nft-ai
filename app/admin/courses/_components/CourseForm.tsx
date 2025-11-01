@@ -8,6 +8,24 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import dynamic from "next/dynamic";
+import SafeReactQuill from "@/components/SafeReactQuill";
+
+
+
+
+
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ color: [] }, { background: [] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["link"],
+    ["clean"],
+  ],
+};
+
 
 const CourseSchema = z.object({
   title: z.string().min(3, "Tên khóa học bắt buộc"),
@@ -174,15 +192,17 @@ export function CourseForm({ mode, id }: CourseFormProps) {
         <label className="block font-medium mb-1">Danh mục *</label>
         <Input placeholder="VD: Công nghệ" {...form.register("category")} />
       </div>
+        <div>
+          <label className="block font-medium mb-1">Mô tả chi tiết</label>
+          <div className="border rounded-md">
+            <SafeReactQuill
+              value={form.watch("description") || ""}
+              onChange={(value: string) => form.setValue("description", value)}
+            />
+          </div>
+        </div>
 
-      <div>
-        <label className="block font-medium mb-1">Mô tả</label>
-        <textarea
-          {...form.register("description")}
-          className="border rounded w-full p-2 min-h-[100px]"
-          placeholder="Mô tả ngắn về khóa học..."
-        />
-      </div>
+
 
       <div className="grid grid-cols-2 gap-4">
         <div>

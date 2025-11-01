@@ -5,7 +5,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { KeyedMutator } from "swr";
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // 🆕 thêm dòng này
+import { useRouter } from "next/navigation";
 
 export type Course = {
   id: number;
@@ -15,19 +15,19 @@ export type Course = {
   endDate?: string;
   status: "UPCOMING" | "ONGOING" | "COMPLETED" | "CLOSED";
   isPublic: boolean;
+  hasSchedule?: boolean; // ✅ bạn có thể bổ sung field này sau từ API nếu muốn
 };
 
 type CourseTableProps = {
-  data: any; // từ SWR: { data: Course[], pagination: { ... } }
+  data: any;
   onDeleted: KeyedMutator<any>;
 };
 
 export default function CourseTable({ data, onDeleted }: CourseTableProps) {
   const { toast } = useToast();
-  const router = useRouter(); // 🆕 hook điều hướng
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // ✅ ép kiểu để chắc chắn là mảng
   const courses: Course[] = Array.isArray(data)
     ? data
     : Array.isArray(data?.data)
@@ -38,19 +38,17 @@ export default function CourseTable({ data, onDeleted }: CourseTableProps) {
     const res = await fetch(`/api/admin/courses/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast({ title: "Đã xóa khóa học 🗑️" });
-      onDeleted(); // reload danh sách
+      onDeleted();
     } else {
       toast({ title: "Xóa thất bại", variant: "destructive" });
     }
   }
 
-  // ✅ lọc theo trạng thái
   const filtered =
     statusFilter === "all"
       ? courses
       : courses.filter((c) => c.status === statusFilter);
 
-  // ✅ sắp xếp theo trạng thái
   const statusOrder: Record<Course["status"], number> = {
     UPCOMING: 1,
     ONGOING: 2,
@@ -98,7 +96,7 @@ export default function CourseTable({ data, onDeleted }: CourseTableProps) {
         <tbody>
           {sorted.map((c) => (
             <tr key={c.id} className="border-t hover:bg-gray-50">
-              {/* 👇 thêm sự kiện click để đi đến trang ghi danh */}
+              {/* Tên khóa học → click vào xem danh sách ghi danh */}
               <td
                 className="p-3 text-indigo-600 hover:underline cursor-pointer"
                 onClick={() => router.push(`/admin/courses/${c.id}/enrollments`)}
@@ -112,10 +110,20 @@ export default function CourseTable({ data, onDeleted }: CourseTableProps) {
               <td className="p-3">{c.endDate?.slice(0, 10) || "—"}</td>
               <td className="p-3">{c.status}</td>
               <td className="p-3 text-center">{c.isPublic ? "✅" : "❌"}</td>
+
               <td className="p-3 text-center space-x-2">
+                {/* 🧠 Nút Lịch học AI */}
                 <Button
                   size="sm"
-                  onClick={() => router.push(`/admin/courses/${c.id}`)} // 🧩 dùng router thay vì window.location
+                  variant={c.hasSchedule ? "default" : "secondary"}
+                  onClick={() => router.push(`/admin/courses/${c.id}/schedule`)}
+                >
+                  {c.hasSchedule ? "📅 Xem lịch học" : "🧠 Tạo lịch học AI"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/admin/courses/${c.id}`)}
                 >
                   Sửa
                 </Button>

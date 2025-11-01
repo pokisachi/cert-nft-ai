@@ -98,9 +98,14 @@ export default function CoursesPage() {
                     <h3 className="text-lg font-semibold mb-2 text-gray-900 line-clamp-2">
                       {course.title}
                     </h3>
-                    <p className="text-sm text-gray-600 line-clamp-3 mb-3">
-                      {course.description}
-                    </p>
+                    <div
+                        className="text-sm text-gray-600 line-clamp-3 mb-3 prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: course.description || "",
+                        }}
+                      ></div>
+
+                                     
                   </div>
                   <div className="flex justify-between items-center">
                     <span

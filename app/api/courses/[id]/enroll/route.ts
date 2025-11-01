@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { Role } from "@prisma/client";
+import { Role, EnrollStatus } from "@prisma/client";
 
 export async function POST(
   req: Request,
@@ -25,28 +25,26 @@ export async function POST(
       );
     }
 
-    // 🧩 Parse body
     const body = await req.json().catch(() => ({}));
-    const preferredDays = body?.preferredDays || "";
-    const preferredTime = body?.preferredTime || "";
-    const validTimes = ["EVENING_1", "EVENING_2", "MORNING", "AFTERNOON"];
-if (!validTimes.includes(preferredTime)) {
-  return NextResponse.json(
-    { error: "Ca học không hợp lệ." },
-    { status: 400 }
-  );
-}
+    const { availableSlots } = body;
 
-
-    // ⚠️ Validate đầu vào
-    if (!preferredDays || !preferredTime) {
+    if (!Array.isArray(availableSlots) || availableSlots.length === 0) {
       return NextResponse.json(
-        { error: "Vui lòng chọn đầy đủ Thứ học và Ca học." },
+        { error: "Vui lòng chọn ít nhất một khung giờ có thể học." },
         { status: 400 }
       );
     }
 
-    // 🧩 Kiểm tra role
+    const allAreValidStrings = availableSlots.every(
+      (slot: any) => typeof slot === "string" && slot.includes("_")
+    );
+    if (!allAreValidStrings) {
+      return NextResponse.json(
+        { error: "Dữ liệu khung giờ đăng ký không hợp lệ." },
+        { status: 400 }
+      );
+    }
+
     if (user.role !== Role.LEARNER) {
       return NextResponse.json(
         { error: "Chỉ học viên mới có thể đăng ký khóa học." },
@@ -54,7 +52,6 @@ if (!validTimes.includes(preferredTime)) {
       );
     }
 
-    // 🧩 Kiểm tra hồ sơ
     if (!user.name || !user.phone || !user.dob) {
       return NextResponse.json(
         { error: "Vui lòng hoàn thiện hồ sơ cá nhân trước khi đăng ký." },
@@ -62,7 +59,6 @@ if (!validTimes.includes(preferredTime)) {
       );
     }
 
-    // ✅ Kiểm tra trạng thái khóa học
     const course = await prisma.course.findUnique({
       where: { id: courseId },
       select: { status: true },
@@ -84,7 +80,6 @@ if (!validTimes.includes(preferredTime)) {
       );
     }
 
-    // 🧩 Kiểm tra trùng đăng ký
     const existing = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: user.id, courseId } },
     });
@@ -96,29 +91,36 @@ if (!validTimes.includes(preferredTime)) {
       );
     }
 
-    // ✅ Tạo bản ghi đăng ký
+    // 💥 CHỖ THAY ĐỔI 1: luôn tạo enrollment ở trạng thái ACTIVE
     const enrollment = await prisma.enrollment.create({
       data: {
         userId: user.id,
         courseId,
-        status: "PENDING",
-        preferredDays, // 🆕 Lưu thứ học
-        preferredTime, // 🆕 Lưu ca học
+        status: EnrollStatus.ACTIVE, // 💥 auto ACTIVE thay vì "PENDING"
+        availableSlots,
+      },
+      include: {
+        course: { select: { id: true, title: true } },
       },
     });
 
-    // 📨 Gửi thông báo
+    // 💥 CHỖ THAY ĐỔI 2: ghi log hoặc gửi thông báo chính xác hơn
     await prisma.notification.create({
       data: {
         title: "Đăng ký khóa học thành công 🎉",
-        content: `Bạn đã đăng ký khóa học #${courseId} thành công.`,
+        content: `Bạn đã đăng ký khóa học "${enrollment.course.title}" thành công.`,
         userId: user.id,
       },
     });
 
+    // 💥 CHỖ THAY ĐỔI 3: trả về rõ ràng thông tin enrollment
     return NextResponse.json({
       message: "Đăng ký khóa học thành công!",
-      data: enrollment,
+      enrollmentId: enrollment.id,
+      course: enrollment.course,
+      availableSlots: enrollment.availableSlots,
+      status: enrollment.status,
+      createdAt: enrollment.enrolledAt,
     });
   } catch (error) {
     console.error("❌ Enroll error:", error);
@@ -128,6 +130,10 @@ if (!validTimes.includes(preferredTime)) {
     );
   }
 }
+
+// ==================================================================
+// DELETE - Giữ nguyên (không cần thay đổi)
+// ==================================================================
 export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -150,7 +156,6 @@ export async function DELETE(
       );
     }
 
-    // 🧩 Kiểm tra xem có bản ghi enrollment không
     const enrollment = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: user.id, courseId } },
     });
@@ -162,12 +167,10 @@ export async function DELETE(
       );
     }
 
-    // ✅ Xóa bản ghi
     await prisma.enrollment.delete({
       where: { userId_courseId: { userId: user.id, courseId } },
     });
 
-    // 📨 Thông báo hủy
     await prisma.notification.create({
       data: {
         title: "Hủy đăng ký khóa học",

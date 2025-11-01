@@ -1,23 +1,33 @@
-// app/api/admin/courses/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/admin-guard";
 
 // 🧩 Lấy thông tin 1 khóa học
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> } // ✅ params là Promise
+) {
   await assertAdminSession(req);
+  const { id } = await context.params; // ✅ phải await
+
   const course = await prisma.course.findUnique({
-    where: { id: Number(params.id) },
+    where: { id: Number(id) },
   });
+
   if (!course)
     return NextResponse.json({ error: "Course not found" }, { status: 404 });
+
   return NextResponse.json(course);
 }
 
 // 🧩 Cập nhật khóa học
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     await assertAdminSession(req);
+    const { id } = await context.params; // ✅ phải await
     const body = await req.json();
 
     const parsedData = {
@@ -35,7 +45,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     };
 
     const updated = await prisma.course.update({
-      where: { id: Number(params.id) },
+      where: { id: Number(id) },
       data: parsedData,
     });
 
@@ -47,10 +57,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // 🧩 Xóa khóa học
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     await assertAdminSession(req);
-    await prisma.course.delete({ where: { id: Number(params.id) } });
+    const { id } = await context.params; // ✅ phải await
+    await prisma.course.delete({ where: { id: Number(id) } });
     return NextResponse.json({ message: "Course deleted" });
   } catch (error: any) {
     console.error("Delete error:", error);

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic"; // 🚫 tránh cache trong dev
 
 export async function GET() {
   try {
@@ -25,13 +27,10 @@ export async function GET() {
 
       if (c.thumbnail) {
         if (c.thumbnail.startsWith("/courses/")) {
-          // ✅ đã là đường dẫn public
           thumbnailUrl = c.thumbnail;
         } else if (c.thumbnail.startsWith("blob:")) {
-          // ⚠️ là blob URL cũ → bỏ qua, dùng default
           thumbnailUrl = "/default-thumbnail.png";
         } else {
-          // ✅ là tên file → nối vào
           thumbnailUrl = `${baseUrl}/courses/${c.thumbnail}`;
         }
       }
