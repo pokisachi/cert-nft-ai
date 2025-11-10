@@ -1,4 +1,5 @@
 import itertools
+import logging
 import math
 import random
 from collections import defaultdict
@@ -15,6 +16,8 @@ from models import (
     ScheduleResult,
 )
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 HARD_PENALTY = 1_000_000
 ASSIGNED_REWARD = 100
@@ -699,7 +702,7 @@ def genetic_algorithm(
 
     population: List[Individual] = [create_random_individual() for _ in range(settings.POPULATION_SIZE)]
 
-    for _ in range(settings.GENERATIONS):
+    for gen in range(settings.GENERATIONS):
         scored = [(ind, fitness(ind)) for ind in population]
         scored.sort(key=lambda item: item[1], reverse=True)
 
@@ -720,6 +723,27 @@ def genetic_algorithm(
             new_population.append(child)
 
         population = new_population
+
+        if scored:
+            best_score = scored[0][1]
+            avg_score = sum(score for _, score in scored) // max(1, len(scored))
+            unassigned = len(scored[0][0].unassigned_students)
+        else:
+            best_score = 0
+            avg_score = 0
+            unassigned = len(enrollment_slot_sets)
+
+        if gen % 10 == 0 or gen == settings.GENERATIONS - 1:
+            logger.info(
+                "GA gen %03d | best=%d | avg=%d | unassigned=%d",
+                gen,
+                best_score,
+                avg_score,
+                unassigned,
+            )
+
+    if not scored:
+        raise ValueError("Khong the danh gia lich vi danh sach ca the rong.")
 
     final_scored = [(ind, fitness(ind)) for ind in population]
     final_scored.sort(key=lambda item: item[1], reverse=True)
@@ -747,6 +771,18 @@ def genetic_algorithm(
         assigned_students = set()
         for cls in final_classes:
             assigned_students.update(cls.student_ids)
+        logger.info(
+            "GA backtracking applied | remaining=%d | final_classes=%d",
+            len(total_students - assigned_students),
+            len(final_classes),
+        )
+        if assigned_students == total_students:
+            backtracking_score = ASSIGNED_REWARD * len(assigned_students)
+            logger.info(
+                "GA score after backtracking | score=%d | students=%d",
+                backtracking_score,
+                len(assigned_students),
+            )
 
     if assigned_students != total_students:
         raise ValueError("Khong the lap lich thoa man cho tat ca hoc vien.")
@@ -755,10 +791,25 @@ def genetic_algorithm(
         key=lambda cls: (tuple(sorted(cls.slots)), cls.teacher_id, cls.room_id)
     )
 
+    final_score = ASSIGNED_REWARD * len(assigned_students)
+    logger.info(
+        "GA final score | score=%d | students=%d | classes=%d",
+        final_score,
+        len(assigned_students),
+        len(final_classes),
+    )
+
     scheduled_classes: List[ScheduledClass] = []
     scheduled_enrollments: List[ScheduledEnrollment] = []
 
     for cls in final_classes:
+        logger.info(
+            "GA result class | teacher=%s | room=%s | slots=%s | students=%s",
+            cls.teacher_id,
+            cls.room_id,
+            cls.slots,
+            sorted(cls.student_ids),
+        )
         for slot in sorted(cls.slots):
             parts = slot.split("_", 1)
             day = parts[0] if parts else "MON"
@@ -788,3 +839,4 @@ def genetic_algorithm(
         scheduledClasses=scheduled_classes,
         scheduledEnrollments=scheduled_enrollments,
     )
+

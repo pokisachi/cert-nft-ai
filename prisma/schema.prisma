@@ -33,6 +33,7 @@ model User {
   notifications     Notification[]
   notificationReads NotificationRead[]
   enrollments       Enrollment[]
+  auditLogs         AuditLog[]      // ✅ thêm quan hệ với AuditLog
 }
 
 // -------------------------
@@ -51,7 +52,6 @@ model Course {
   thumbnail        String?
   createdAt        DateTime     @default(now())
 
-  // Liên kết
   examSessions     ExamSession[]
   certificates     Certificate[]
   notifications    Notification[]
@@ -59,7 +59,6 @@ model Course {
   lessons          LessonTemplate[]
   scheduledClasses ScheduledClass[]
 
-  // 🔧 Trường bổ sung cho GA Scheduler
   structure_lessons_per_week Int    @default(3)
   structure_lesson_duration  Int    @default(90)
   requirement_qualification  String @default("TOEIC_450")
@@ -90,14 +89,15 @@ model ExamSession {
 }
 
 // -------------------------
-// BẢNG EXAM RESULT
+// 
 // -------------------------
 model ExamResult {
   id            Int        @id @default(autoincrement())
   examSessionId Int
   userId        Int
-  score         Int
+  score         Int?      
   status        ExamStatus
+  locked        Boolean     @default(false)
 
   examSession ExamSession  @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -140,7 +140,7 @@ model NotificationRead {
 }
 
 // -------------------------
-// BẢNG CERTIFICATE
+// 
 // -------------------------
 model Certificate {
   id           Int      @id @default(autoincrement())
@@ -149,6 +149,7 @@ model Certificate {
   examResultId Int?     @unique
   tokenId      String   @unique
   ipfsCid      String   @unique
+  docHash      String   @unique // ✅ SHA-256 của PDF
   issuedAt     DateTime @default(now())
   revoked      Boolean  @default(false)
   updatedAt    DateTime @updatedAt
@@ -179,10 +180,12 @@ model Enrollment {
 }
 
 // -------------------------
+// GIÁO VIÊN / PHÒNG / LỊCH HỌC
+// -------------------------
 model Teacher {
   id           String   @id @default(cuid())
   name         String
-  availability String[] // ví dụ ["Mon_EVENING_1", "Wed_EVENING_2"]
+  availability String[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
@@ -192,8 +195,8 @@ model Teacher {
 
 model Qualification {
   id          String   @id @default(cuid())
-  name        String // Ví dụ: "TOEIC 250+", "TOEIC 900+", "Tin học A", "Excel nâng cao"
-  category    String // TOEIC, IELTS, TIN_HOC, ENGLISH, ...
+  name        String
+  category    String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -201,7 +204,6 @@ model Qualification {
   teachers TeacherQualification[]
 }
 
-// 🔗 Bảng trung gian cho quan hệ N–N
 model TeacherQualification {
   id              String        @id @default(cuid())
   teacherId       String
@@ -210,9 +212,6 @@ model TeacherQualification {
   qualification   Qualification @relation(fields: [qualificationId], references: [id])
 }
 
-// -------------------------
-// BẢNG PHÒNG HỌC
-// -------------------------
 model Room {
   id               String           @id
   capacity         Int
@@ -223,21 +222,17 @@ model Room {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
-// -------------------------
-// BẢNG LỊCH HỌC ĐÃ XẾP (AI TẠO RA)
-// -------------------------
 model ScheduledClass {
   id        Int      @id @default(autoincrement())
   courseId  Int
   teacherId String
   roomId    String
-  dayOfWeek String // "Mon", "Tue", "Wed", ...
-  timeSlot  String // "EVENING_1", "EVENING_2", ...
+  dayOfWeek String
+  timeSlot  String
   startDate DateTime
   endDate   DateTime
   createdAt DateTime @default(now())
 
-  // 🔗 Quan hệ
   course               Course                @relation(fields: [courseId], references: [id])
   teacher              Teacher               @relation(fields: [teacherId], references: [id])
   room                 Room                  @relation(fields: [roomId], references: [id])
@@ -250,11 +245,25 @@ model ScheduledEnrollment {
   enrollmentId     Int
   assignedAt       DateTime @default(now())
 
-  // Quan hệ
   scheduledClass ScheduledClass @relation(fields: [scheduledClassId], references: [id])
   enrollment     Enrollment     @relation(fields: [enrollmentId], references: [id])
 
   @@unique([scheduledClassId, enrollmentId])
+}
+
+// -------------------------
+// BẢNG AUDIT LOG
+// -------------------------
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  action    String
+  entity    String?
+  entityId  String?
+  payload   Json?
+  createdAt DateTime  @default(now())
+
+  actor     User?     @relation(fields: [actorId], references: [id])
 }
 
 // -------------------------
@@ -284,4 +293,24 @@ enum CourseStatus {
   ONGOING
   COMPLETED
   CLOSED
+}
+enum DedupStatus {
+  unique
+  suspected_copy
+  duplicate
+}
+
+model AIDedupResult {
+  id              Int          @id @default(autoincrement())
+  examResultId    Int
+  userId          Int
+  courseId        Int
+  preIssueHash    String
+  status          DedupStatus
+  similarityScore Float
+  checkedAt       DateTime     @default(now())
+
+  @@unique([userId, courseId, preIssueHash])
+  @@index([userId, courseId, checkedAt])
+  @@index([examResultId])
 }

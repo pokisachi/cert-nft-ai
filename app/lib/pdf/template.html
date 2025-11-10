@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chứng Chỉ Hoàn Thành Khóa Học</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    @page { size: A4; margin: 0; }
+
+    :root{
+      --navy:#142d55;
+      --gold:#e2b657;
+      --text:#222;
+      --muted:#5c6675;
+
+      /* khoảng cách khung */
+      --blue-gap:12mm;      /* mép → khung xanh */
+      --gold-gap:18mm;      /* mép → khung vàng (trong khung xanh) */
+      --content-pad:28mm;    /* mép → vùng nội dung */
+
+      /* footer */
+      --seal: 30mm;       /* con dấu lớn hơn một chút, nhìn cân trang hơn */
+      --sigw: 50mm;       /* chữ ký rộng ra để line dài thêm */
+      --gapSeal: 8mm;
+    }
+
+    *{ box-sizing:border-box; -webkit-print-color-adjust:exact; }
+    html,body{ margin:0; padding:0; }
+    body{
+      background:#f3f4f6;
+      font-family:"Merriweather", serif;
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .page{
+      width:210mm; 
+      /* Đặt chiều cao min để nội dung không bị cắt trên màn hình, 
+         khi in @page A4 sẽ lo phần ngắt trang. */
+      min-height:297mm; 
+      background:#fff; 
+      position:relative; 
+      overflow:hidden;
+ 
+    }
+
+    /* 2 khung viền trong */
+    .frame-blue,.frame-gold{
+      position:absolute; inset:0; pointer-events:none; border-radius:3px;
+    }
+    .frame-blue{
+      top:var(--blue-gap); right:var(--blue-gap); bottom:var(--blue-gap); left:var(--blue-gap);
+      border:3pt solid var(--navy);
+    }
+    .frame-gold{
+      top:var(--gold-gap); right:var(--gold-gap); bottom:var(--gold-gap); left:var(--gold-gap);
+      border:1.6pt solid var(--gold);
+    }
+
+    .content{
+      position:absolute; 
+      inset:var(--content-pad);
+      display:flex; flex-direction:column; 
+      gap:0; 
+      /* Chiều cao nội dung = chiều cao trang - 2 lần padding */
+      height:calc(100% - var(--content-pad)*2);
+    }
+
+    /* Header: logo và QR */
+    .header{
+      display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14mm;
+    }
+    .logo{
+      width:75mm; height:34mm;
+      display:flex; align-items:center; justify-content:center; background:#fff;
+   
+    }
+    .logo img{ width:100%; height:100%; object-fit:contain; }
+
+    .qr{
+      text-align:center; color:var(--muted); font-size:9pt;
+    }
+    .qr img{ 
+      width:30mm; height:30mm; 
+      object-fit:contain; 
+      border:1px solid #d9dbe1; 
+      margin-bottom:3px; 
+    }
+    .qr small{ display:block; margin-top:2px; }
+
+    /* Title */
+    .title{ text-align:center; color:var(--navy); }
+    .title h1{
+      margin:0;
+      font-family:"Playfair Display", serif;
+      font-weight:700;
+      font-size:23pt;
+      letter-spacing:.4px;
+    }
+    .title .sub{
+      margin:6px 0 9mm;
+      color:#6b7280;
+      font-size:10.5pt;
+      font-style:italic;
+      letter-spacing:.5px;
+    }
+
+    .gold-rule{
+      width:78mm;
+      height:1.8pt;
+      background:var(--gold);
+      margin:0 auto 9mm;
+      border-radius:1px;
+    }
+
+    /* Body text */
+    .intro, .dob, .desc, .score{
+      text-align:center;
+      font-size:11pt;
+      color:var(--muted);
+    }
+    .intro{ margin-bottom:4mm; }
+
+    .name{
+      text-align:center;
+      color:var(--navy);
+      font-family:"Playfair Display", serif;
+      font-size:18.5pt;
+      font-weight:700;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      margin:2mm 0 1mm;
+    }
+
+    .course{
+      text-align:center;
+      color:var(--navy);
+      font-family:"Playfair Display", serif;
+      font-size:15.5pt;
+      font-weight:700;
+      letter-spacing:.2px;
+      text-transform:uppercase;
+      margin:4.5mm 0 1mm;
+    }
+
+    .score{
+      color:#374151;
+      font-size:10.8pt;
+      margin-top:4.5mm;
+      line-height:1.6;
+    }
+
+    /* ===== FOOTER (cân tuyệt đối) ===== */
+    .footer{
+      margin-top:auto; /* Đẩy footer xuống dưới cùng */
+      display:flex;
+      justify-content:center;
+      /* Thay đổi: Căn theo đỉnh (top) thay vì căn giữa (center) */
+      /* Điều này đảm bảo các .mid và .seal bắt đầu từ cùng một điểm, 
+         vì .mid có chiều cao bằng .seal, đường kẻ sẽ được căn giữa con dấu. */
+      align-items:flex-start;        /* tâm 3 cột ngang hàng */
+      gap: var(--gapSeal);
+      padding-top: 22mm; /* Khoảng đệm để không dính vào nội dung */
+    }
+
+    /* Con dấu giữa cố định kích thước, là “mốc” để căn */
+    .seal{
+      flex:0 0 var(--seal);
+      width:var(--seal);
+      height:var(--seal);
+      border:2.2pt solid var(--gold);
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      text-align:center; background:#fff; color:var(--gold);
+      font-weight:700; font-size:9.5pt; line-height:1.25; letter-spacing:1px;
+      box-sizing:border-box;
+    }
+
+    /* Mỗi cột chữ ký có bề rộng cố định */
+    .sig{
+      width:var(--sigw);
+      text-align:center;
+      color:var(--navy);
+      display:flex; flex-direction:column; align-items:center;
+    }
+
+    /* Khối “mid” cao đúng bằng đường kính con dấu
+       -> đường kẻ luôn nằm đúng tâm vòng tròn */
+    .sig .mid{
+      height:var(--seal);
+      display:flex; align-items:center; justify-content:center;
+      width:100%;
+    }
+
+    /* 2 gạch ngang bằng nhau, sát vòng tròn (khoảng cách do gap của .footer) */
+    .sig .line{
+      width:100%;
+      border-top:1.4pt solid var(--navy);
+    }
+
+    /* Text dưới line */
+    /* .sig .name đã được định nghĩa ở trên, dùng lại */
+    .sig .name{
+  font-weight:600;
+  font-size:8.3pt;       /* ✅ nhỏ hơn trước, cân với layout */
+  text-transform:uppercase;
+  margin-top:4mm;
+  word-break:break-word; /* ✅ tự ngắt nếu tên dài */
+  max-width:90%;         /* ✅ đảm bảo không tràn khỏi line */
+}
+
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="frame-blue"></div>
+    <div class="frame-gold"></div>
+
+    <div class="content">
+      <!-- Header -->
+      <div class="header">
+        <div class="logo">
+          <img src="{{LOGO_SRC}}" alt="Logo {{ISSUER_NAME}}" />
+        </div>
+        <div class="qr">
+          <img src="{{QR_CODE}}" alt="QR Verify" />
+          <small>Cert ID: <b>{{CERTIFICATE_CODE}}</b></small>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="title">
+        <h1>CHỨNG CHỈ HOÀN THÀNH KHÓA HỌC</h1>
+        <div class="sub">CERTIFICATE OF COMPLETION</div>
+      </div>
+      <div class="gold-rule"></div>
+
+      <!-- Body -->
+      <div class="intro">This is to certify that / <b>Chứng nhận</b></div>
+      <div class="name">{{STUDENT_NAME}}</div>
+      <div class="dob">Date of Birth: <b>{{STUDENT_DOB}}</b></div>
+      <div class="desc" style="margin-top:6mm;">
+        has successfully completed the course / đã hoàn thành xuất sắc khoá học
+      </div>
+      <div class="course">{{COURSE_TITLE}}</div>
+      <div class="score">
+        Final Score (Điểm): <b>{{EXAM_SCORE}}</b> &nbsp;—&nbsp;
+        Result (Kết quả): <b>{{EXAM_STATUS}}</b><br />
+        Completion Date (Ngày hoàn thành): <b>{{COMPLETION_DATE}}</b>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="sig">
+          <div class="mid"><div class="line"></div></div>
+          <div class="name">{{SIGNER_LEFT_NAME}}</div>
+          <div class="role">{{SIGNER_LEFT_ROLE}}</div>
+        </div>
+
+        <div class="seal">OFFICIAL<br/>CENTER<br/>SEAL</div>
+
+        <div class="sig">
+          <div class="mid"><div class="line"></div></div>
+          <div class="name">{{SIGNER_RIGHT_NAME}}</div>
+          <div class="role">{{SIGNER_RIGHT_ROLE}}</div>
+          <div class="date">Issue Date: {{ISSUE_DATE}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

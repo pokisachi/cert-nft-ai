@@ -1,7 +1,14 @@
+import logging
 from fastapi import FastAPI, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from models import InputPayload, ScheduleResult
 from genetic_algorithm import genetic_algorithm  # FIXED: Import đúng path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s",
+)
+
 
 app = FastAPI(
     title="AI Scheduler – Genetic Algorithm",

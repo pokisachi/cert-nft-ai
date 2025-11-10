@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+datasketch
+simhash
+pdfminer.six
+pypdf
+python-dotenv
