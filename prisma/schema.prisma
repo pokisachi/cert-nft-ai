@@ -95,7 +95,7 @@ model ExamResult {
   id            Int        @id @default(autoincrement())
   examSessionId Int
   userId        Int
-  score         Int?      
+  score         Int?
   status        ExamStatus
   locked        Boolean     @default(false)
 
@@ -104,7 +104,9 @@ model ExamResult {
   certificate Certificate? @relation("ExamResultToCertificate")
 
   @@unique([examSessionId, userId])
+  @@index([examSessionId, status]) 
 }
+
 
 // -------------------------
 // BẢNG NOTIFICATION
