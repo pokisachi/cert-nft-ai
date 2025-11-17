@@ -1,0 +1,170 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[a4paper, margin=0pt]{geometry}
+
+\usepackage{fontspec}
+\usepackage[vietnamese, bidi=basic, provide=*]{babel}
+\babelprovide[import, onchar=ids fonts]{vietnamese}
+\babelprovide[import, onchar=ids fonts]{english}
+
+\babelfont{rm}{Noto Serif}
+\babelfont[vietnamese]{rm}{Noto Serif}
+\babelfont{sf}{Noto Sans}
+\babelfont[vietnamese]{sf}{Noto Sans}
+
+\newfontfamily\playfair{Noto Serif Display}
+
+\usepackage{enumitem}
+\setlist[itemize]{label=-}
+
+\usepackage[dvipsnames]{xcolor}
+\definecolor{navy}{HTML}{142d55}
+\definecolor{gold}{HTML}{E2B657}
+\definecolor{text}{HTML}{222222}
+\definecolor{muted}{HTML}{5c6675}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{graphicx}
+\usepackage{calc}
+\usepackage{setspace}
+\usepackage{ifthen}
+
+\usepackage[pdftex, unicode, bookmarks=false, hidelinks]{hyperref}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\hypersetup{
+    pdftitle={ TOEIC 650+ (K003) - Nguyễn Như Anh },
+    pdfauthor={ Trung Tâm ABC },
+    pdfsubject={ TOEIC 650+ (K003) Completion Certificate },
+    pdfkeywords={ TOEIC 650+ (K003),TOEIC }
+}
+
+\newlength{\bluegap} \setlength{\bluegap}{12mm}
+\newlength{\goldgap} \setlength{\goldgap}{18mm}
+\newlength{\contentpad} \setlength{\contentpad}{28mm}
+\newlength{\sealwidth} \setlength{\sealwidth}{30mm}
+\newlength{\sigwidth} \setlength{\sigwidth}{50mm}
+\newlength{\gapseal} \setlength{\gapseal}{8mm}
+\newlength{\logowidth} \setlength{\logowidth}{75mm}
+\newlength{\logoheight} \setlength{\logoheight}{34mm}
+\newlength{\qrwidth} \setlength{\qrwidth}{30mm}
+
+\begin{document}
+
+\begin{tikzpicture}[overlay, remember picture]
+    \coordinate (NW) at (current page.north west);
+    \coordinate (SE) at (current page.south east);
+
+    \draw[navy, line width=3pt, rounded corners=3pt]
+        ($(NW) + (\bluegap, -\bluegap)$) rectangle ($(SE) + (-\bluegap, \bluegap)$);
+    
+    \draw[gold, line width=1.6pt, rounded corners=3pt]
+        ($(NW) + (\goldgap, -\goldgap)$) rectangle ($(SE) + (-\goldgap, \goldgap)$);
+\end{tikzpicture}
+
+\vspace*{\contentpad}
+\hspace*{\contentpad}
+
+\begin{minipage}[t][\paperheight - 2\contentpad][t]{\paperwidth - 2\contentpad}
+
+
+        \begin{minipage}[t]{\logowidth}
+        \includegraphics[width=\logowidth, height=\logoheight, keepaspectratio]{ D:\2025-2026\src_Code\cert-nft\tmp\logo-1763274133513.png }
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{\qrwidth}
+        \centering
+        \ifthenelse{\equal{ true }{true}}{
+            \includegraphics[width=\qrwidth, height=\qrwidth, keepaspectratio]{ D:\2025-2026\src_Code\cert-nft\tmp\qr-1763274133343.png }
+            \vspace{3pt}
+            {\color{muted}\fontsize{9pt}{11pt}\selectfont Cert ID: \textbf{ C-12345 }}
+        }{
+            \framebox{\parbox[c][\qrwidth][c]{\qrwidth}{\centering QR Preview}}
+            \vspace{3pt}
+            {\color{muted}\fontsize{9pt}{11pt}\selectfont Cert ID: \textbf{ C-12345 }}
+        }
+    \end{minipage}
+
+    \vspace{10mm}
+
+    \begin{center}
+        {\color{navy}\playfair\fontsize{23pt}{28pt}\bfseries CHỨNG CHỈ HOÀN THÀNH KHÓA HỌC\par}
+        \vspace{6pt}
+        {\color{muted}\fontsize{10.5pt}{12pt}\itshape CERTIFICATE OF COMPLETION\par}
+        \vspace{9mm}
+        {\color{gold}\rule{78mm}{1.8pt}\par}
+        \vspace{9mm}
+    \end{center}
+
+    \begin{center}
+        \fontsize{11pt}{13pt}\selectfont
+        {\color{muted}This is to certify that / \textbf{Chứng nhận}}\par
+        \vspace{2mm}
+        {\color{navy}\playfair\fontsize{18.5pt}{22pt}\bfseries\MakeUppercase{ Nguyễn Như Anh }}\par
+        \vspace{1mm}
+        {\color{muted}Date of Birth: \textbf{ 2001-12-29 }}\par
+        \vspace{6mm}
+        {\color{muted}has successfully completed the course / đã hoàn thành xuất sắc khoá học}\par
+        \vspace{1mm}
+        {\color{navy}\playfair\fontsize{15.5pt}{18pt}\bfseries\MakeUppercase{ TOEIC 650+ (K003) }}\par
+        \vspace{4.5mm}
+
+        \setstretch{1.6}
+        {\color{text}\fontsize{10.8pt}{12pt}\selectfont
+        Final Score (Điểm): \textbf{ 650 } \quad—\quad
+        Result (Kết quả): \textbf{ PASS }\par
+        Completion Date (Ngày hoàn thành): \textbf{ 2025-11-19 }\par
+        }
+        \setstretch{1.0}
+    \end{center}
+
+    \vfill
+    \vspace{12mm}
+
+
+        \begin{center}
+        \begin{minipage}[t]{\sigwidth}
+            \centering
+            \parbox[c][\sealwidth][c]{\linewidth}{
+                \vfill\textcolor{navy}{\rule{\linewidth}{1.4pt}}\vfill
+            }
+            \vspace{4mm}
+            {\color{navy}\playfair\fontsize{8.3pt}{10pt}\bfseries\MakeUppercase{  }\par}
+            {\color{muted}\fontsize{8.3pt}{10pt}\selectfont  \par}
+        \end{minipage}
+
+        \hspace{\gapseal}
+
+        \begin{minipage}[t]{\sealwidth}
+            \centering
+            \tikz{\node[
+                draw=gold,
+                circle,
+                line width=2.2pt,
+                minimum size=\sealwidth,
+                text=gold,
+                font=\bfseries\fontsize{9.5pt}{11pt}\selectfont,
+                align=center
+            ] {OFFICIAL\\CENTER\\SEAL};}
+        \end{minipage}
+
+        \hspace{\gapseal}
+
+        \begin{minipage}[t]{\sigwidth}
+            \centering
+            \parbox[c][\sealwidth][c]{\linewidth}{
+                \vfill\textcolor{navy}{\rule{\linewidth}{1.4pt}}\vfill
+            }
+            \vspace{4mm}
+            {\color{navy}\playfair\fontsize{8.3pt}{10pt}\bfseries\MakeUppercase{  }\par}
+            {\color{muted}\fontsize{8.3pt}{10pt}\selectfont  \par}
+            {\color{muted}\fontsize{8.3pt}{10pt}\selectfont Issue Date:  2025-02-03 \par}
+        \end{minipage}
+    \end{center}
+
+\end{minipage}
+
+\end{document}

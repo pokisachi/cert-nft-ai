@@ -1,0 +1,116 @@
+\documentclass[11pt]{article}
+
+% --- PAGE SIZE A4 + REMOVE ALL MARGINS ---
+\usepackage[
+    paperwidth=210mm,
+    paperheight=297mm,
+    margin=0mm
+]{geometry}
+
+\pagestyle{empty}
+
+% --- FONTS ---
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+
+% --- GRAPHICS & TIKZ ---
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+\begin{document}
+
+% ====================================================
+%                BACKGROUND FULL PAGE
+% ====================================================
+
+\begin{tikzpicture}[remember picture, overlay]
+    \node at (current page.center) {
+        \includegraphics[
+            width=\paperwidth,
+            height=\paperheight
+        ]{background.png}
+    };
+\end{tikzpicture}
+
+% ====================================================
+%         TITLE AREA (GIỮ VỊ TRÍ GIỐNG MẪU PNG)
+% ====================================================
+
+\vspace*{90mm}
+
+\begin{center}
+
+    % --- COURSE TITLE ---
+    {\fontsize{28pt}{32pt}\bfseries\MakeUppercase{TOEIC 650+ (K003)} \par}
+
+    \vspace{4mm}
+
+    % --- Subtitle ---
+    {\fontsize{14pt}{16pt}
+        This certificate is proudly presented to:
+    \par}
+
+\end{center}
+
+% ====================================================
+%        MAIN CONTENT — STUDENT INFO
+% ====================================================
+
+\vspace{26mm}
+
+\begin{center}
+
+    % Student Name
+    {\fontsize{23pt}{26pt}\bfseries\MakeUppercase{Nguyễn Như Anh} \par}
+
+    \vspace{4mm}
+    {\fontsize{12pt}{14pt} Date of Birth: 2001-12-29 \par}
+
+    \vspace{12mm}
+
+    {\fontsize{13pt}{16pt}
+        Final Score: \textbf{650} \\[3pt]
+        Completion Date: \textbf{2025-11-19}
+    \par}
+
+\end{center}
+
+% ====================================================
+%    SIGNATURE AREA — TEMPORARILY COMMENTED OUT
+% ====================================================
+
+%  ⚠ Ghi chú:
+%  Phần chữ ký được ẩn tạm thời để tránh lỗi khi dữ liệu rỗng.
+%  Sẽ bật lại khi backend hoàn chỉnh.
+
+% \vfill
+% \vspace*{20mm}
+%
+% \begin{center}
+% \begin{tabular}{ccc}
+%
+% % LEFT SIGNER
+% \begin{minipage}{0.33\textwidth}
+%     \centering
+%     \rule{50mm}{1pt} \\[3pt]
+%     {\bfseries\fontsize{9pt}{11pt}\MakeUppercase{}}\\
+%     {\fontsize{9pt}{11pt}  }
+% \end{minipage}
+%
+% & \hspace{25mm} &
+%
+% % RIGHT SIGNER
+% \begin{minipage}{0.33\textwidth}
+%     \centering
+%     \rule{50mm}{1pt} \\[3pt]
+%     {\bfseries\fontsize{9pt}{11pt}\MakeUppercase{}}\\
+%     {\fontsize{9pt}{11pt}  }\\
+%     {\fontsize{9pt}{11pt} Issue Date: 2025-11-17 }
+% \end{minipage}
+%
+% \end{tabular}
+% \end{center}
+
+\end{document}

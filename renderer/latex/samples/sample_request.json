@@ -1,0 +1,22 @@
+{
+  "STUDENT_NAME": "Nguyễn Văn Tiến",
+  "STUDENT_DOB": "1998-02-14",
+  "COURSE_TITLE": "Blockchain Fundamentals",
+  "EXAM_SCORE": "890",
+  "EXAM_STATUS": "PASS",
+  "COMPLETION_DATE": "2025-10-02",
+  "ISSUE_DATE": "2025-10-05",
+  "CERTIFICATE_CODE": "CERT-2025-0001",
+  "ISSUER_NAME": "Certify Academy",
+  "SIGNER_LEFT_NAME": "Trần Phương Linh",
+  "SIGNER_LEFT_ROLE": "Academic Director",
+  "SIGNER_RIGHT_NAME": "Hoàng Quang Minh",
+  "SIGNER_RIGHT_ROLE": "Head of Training",
+  "SHOW_QR": "true",
+  "VERIFY_URL": "https://verify.example.com/cert/CERT-2025-0001",
+  "PDF_TITLE": "Blockchain Fundamentals Certificate",
+  "PDF_AUTHOR": "Certify Academy",
+  "PDF_SUBJECT": "Completion certificate",
+  "PDF_KEYWORDS": "certificate, blockchain",
+  "SOURCE_DATE_EPOCH": 1764892800
+}

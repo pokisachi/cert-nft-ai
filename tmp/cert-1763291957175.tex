@@ -1,0 +1,159 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- PAGE SETUP ---
+\usepackage[a4paper, margin=0pt]{geometry}
+\pagestyle{empty}
+
+% --- FONT: DEJAVU (ổn định nhất trên mọi server) ---
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\newfontfamily\playfair{DejaVu Serif} % thay thế Playfair Display bằng DejaVu Serif Bold
+
+% --- COLORS ---
+\usepackage[dvipsnames]{xcolor}
+\definecolor{navy}{HTML}{142d55}
+\definecolor{gold}{HTML}{E2B657}
+\definecolor{text}{HTML}{222222}
+\definecolor{muted}{HTML}{5c6675}
+
+% --- UTILS ---
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+% --- HYPERREF ---
+\usepackage[pdftex, unicode, hidelinks]{hyperref}
+\hypersetup{
+    pdftitle={ TOEIC 650+ (K003) - Trần Quốc Bảo },
+    pdfauthor={ UNET.edu.vn },
+    pdfsubject={ TOEIC 650+ (K003) Completion Certificate },
+    pdfkeywords={ TOEIC 650+ (K003),TOEIC }
+}
+
+% --- LENGTHS ---
+\newlength{\bluegap} \setlength{\bluegap}{12mm}
+\newlength{\goldgap} \setlength{\goldgap}{18mm}
+\newlength{\contentpad} \setlength{\contentpad}{28mm}
+\newlength{\sealwidth} \setlength{\sealwidth}{30mm}
+\newlength{\sigwidth} \setlength{\sigwidth}{50mm}
+\newlength{\gapseal} \setlength{\gapseal}{8mm}
+\newlength{\logowidth} \setlength{\logowidth}{75mm}
+\newlength{\logoheight} \setlength{\logoheight}{34mm}
+\newlength{\qrwidth} \setlength{\qrwidth}{30mm}
+
+\begin{document}
+
+% --- BORDER FRAMES ---
+\begin{tikzpicture}[overlay, remember picture]
+    \coordinate (NW) at (current page.north west);
+    \coordinate (SE) at (current page.south east);
+
+    % Blue border
+    \draw[navy, line width=3pt, rounded corners=3pt]
+        ($(NW)+(\bluegap,-\bluegap)$) rectangle ($(SE)+(-\bluegap,\bluegap)$);
+
+    % Gold border
+    \draw[gold, line width=1.6pt, rounded corners=3pt]
+        ($(NW)+(\goldgap,-\goldgap)$) rectangle ($(SE)+(-\goldgap,\goldgap)$);
+\end{tikzpicture}
+
+% --- CONTENT AREA ---
+\vspace*{\contentpad}
+\hspace*{\contentpad}
+
+\begin{minipage}[t][\paperheight - 2\contentpad][t]{\paperwidth - 2\contentpad}
+
+    % --- HEADER ---
+    \begin{minipage}[t]{\logowidth}
+        \includegraphics[width=\logowidth]{ D:\2025-2026\src_Code\cert-nft\tmp\logo-1763291957159.png }
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{\qrwidth}
+        \centering
+        \includegraphics[width=\qrwidth]{  }
+        \vspace{3pt}
+
+        {\color{muted}\fontsize{9pt}{11pt}\selectfont Cert ID: \textbf{ BF-2025-4 }}
+    \end{minipage}
+
+    \vspace{14mm}
+
+    % --- TITLE ---
+    \begin{center}
+        {\color{navy}\playfair\bfseries\fontsize{23pt}{28pt} CHỨNG CHỈ HOÀN THÀNH KHÓA HỌC \par}
+        \vspace{4pt}
+        {\color{muted}\itshape CERTIFICATE OF COMPLETION \par}
+        \vspace{9mm}
+        \color{gold}\rule{78mm}{1.8pt}
+        \vspace{9mm}
+    \end{center}
+
+    % --- BODY ---
+    \begin{center}
+        {\color{muted}This is to certify that / \textbf{Chứng nhận}}\par
+        \vspace{2mm}
+        {\color{navy}\playfair\bfseries\fontsize{18pt}{22pt}\MakeUppercase{ Trần Quốc Bảo }}\par
+        \vspace{1mm}
+        {\color{muted}Date of Birth: \textbf{ 2004-09-06 }}\par
+        \vspace{6mm}
+        {\color{muted}has successfully completed the course / đã hoàn thành xuất sắc khoá học}\par
+        \vspace{2mm}
+        {\color{navy}\playfair\bfseries\fontsize{15pt}{18pt}\MakeUppercase{ TOEIC 650+ (K003) }}\par
+
+        \vspace{4mm}
+        \setstretch{1.6}
+        {\color{text}\fontsize{10pt}{12pt}
+        Final Score (Điểm): \textbf{ 670 } — 
+        Result (Kết quả): \textbf{ PASS }\par
+        Completion Date: \textbf{ 2025-11-19 }\par
+        }
+        \setstretch{1.0}
+    \end{center}
+
+    % --- FOOTER ---
+    \vfill
+    \vspace{12mm}
+
+    \begin{center}
+        % Left signature
+        \begin{minipage}[t]{\sigwidth}
+            \centering
+            \rule{\linewidth}{1.4pt}
+            \vspace{3mm}
+
+            {\bfseries\fontsize{8pt}{10pt}\MakeUppercase{  }}\par
+            {\color{muted}\fontsize{8pt}{10pt}  }
+        \end{minipage}
+
+        \hspace{\gapseal}
+
+        % Seal
+        \begin{minipage}[t]{\sealwidth}
+            \centering
+            \tikz{\node[
+                draw=gold, circle, line width=2pt,
+                minimum size=\sealwidth,
+                text=gold, font=\bfseries\fontsize{9pt}{11pt},
+                align=center
+            ] {OFFICIAL\\CENTER\\SEAL};}
+        \end{minipage}
+
+        \hspace{\gapseal}
+
+        % Right signature
+        \begin{minipage}[t]{\sigwidth}
+            \centering
+            \rule{\linewidth}{1.4pt}
+            \vspace{3mm}
+
+            {\bfseries\fontsize{8pt}{10pt}\MakeUppercase{  }}\par
+            {\color{muted}\fontsize{8pt}{10pt}  }\par
+            {\color{muted}\fontsize{8pt}{10pt} Issue Date: 2025-11-16 }
+        \end{minipage}
+    \end{center}
+
+\end{minipage}
+
+\end{document}

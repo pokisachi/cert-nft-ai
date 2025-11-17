@@ -39,7 +39,7 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-  ],
+, "blockchain/hardhat.config.js"  ],
   "exclude": [
     "node_modules",
     ".next",

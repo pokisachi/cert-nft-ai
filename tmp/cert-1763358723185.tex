@@ -1,0 +1,54 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, margin=0pt]{geometry}
+\pagestyle{empty}
+
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}   % <-- FIX LỖI QUAN TRỌNG
+
+\usepackage{graphicx}
+\usepackage{setspace}
+
+\begin{document}
+
+% ====================================================
+% FULL-PAGE BACKGROUND — ABSOLUTE POSITION (FIXED)
+% ====================================================
+\begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=center] at ($(current page.south east)!0.5!(current page.north west)$) {
+        \includegraphics[width=\paperwidth, height=\paperheight]{background.png}
+    };
+\end{tikzpicture}
+
+% ====================================================
+%              CONTENT STARTS
+% ====================================================
+
+\vspace*{95mm}
+
+\begin{center}
+    {\fontsize{26pt}{30pt}\bfseries\MakeUppercase{TOEIC 650+ (K003)}\par}
+    \vspace{4mm}
+    {\fontsize{13pt}{15pt}
+        This certificate is proudly presented to:
+        \par}
+\end{center}
+
+\vspace{25mm}
+
+\begin{center}
+    {\fontsize{22pt}{24pt}\bfseries\MakeUppercase{Nguyễn Tường Vy}\par}
+    \vspace{3mm}
+    {\fontsize{12pt}{14pt} Date of Birth: 2004-05-02 \par}
+
+    \vspace{10mm}
+    {\fontsize{12pt}{14pt}
+        Final Score: \textbf{650} \\
+        Completion Date: \textbf{2025-11-19}
+    }
+\end{center}
+
+\end{document}
