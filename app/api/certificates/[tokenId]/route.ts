@@ -1,3 +1,4 @@
+// app/api/certificates/[tokenId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -8,9 +9,8 @@ export async function GET(
   try {
     const { tokenId } = params;
 
-    // Lấy certificate + user + course
     const cert = await prisma.certificate.findUnique({
-      where: { tokenId },
+      where: { tokenId }, // tokenId là string trong schema
       include: {
         user: true,
         course: true,
@@ -18,16 +18,13 @@ export async function GET(
     });
 
     if (!cert) {
-      return NextResponse.json(
-        { error: "NOT_FOUND" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     }
 
     const chainId = Number(process.env.CHAIN_ID ?? 89);
     const contract = process.env.CONTRACT_ADDRESS ?? "";
 
-    // PDF từ Pinata
+    // PDF Pinata vẫn giữ, nhưng chút nữa ta sẽ bỏ dùng ở UI
     const pdfUrl = `https://gateway.pinata.cloud/ipfs/${cert.ipfsCid}`;
 
     return NextResponse.json({
@@ -38,7 +35,7 @@ export async function GET(
           name: cert.user.name,
           email: cert.user.email,
           dob: cert.user.dob?.toISOString() ?? null,
-          walletAddress: cert.user.walletAddress ?? null, // ⭐ thêm tại đây
+          walletAddress: cert.user.walletAddress ?? null,
         },
         course: {
           title: cert.course.title,
@@ -48,11 +45,10 @@ export async function GET(
           chainId,
           contract,
           txHash: cert.txHash,
-          owner: cert.user.walletAddress ?? null, // ⭐ thêm tại đây
+          owner: cert.user.walletAddress ?? null,
         },
         files: {
-          pdf: pdfUrl,
-          metadata: null,
+          pdf: pdfUrl,   // vẫn trả về, nhưng UI sẽ không dùng nữa nếu bạn muốn
         },
       },
     });
