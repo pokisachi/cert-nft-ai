@@ -8,9 +8,9 @@ export async function GET(
   try {
     const { tokenId } = params;
 
-    // 1) Lấy certificate + user + course
+    // Lấy certificate + user + course
     const cert = await prisma.certificate.findUnique({
-      where: { tokenId }, // tokenId là string trong schema
+      where: { tokenId },
       include: {
         user: true,
         course: true,
@@ -18,17 +18,17 @@ export async function GET(
     });
 
     if (!cert) {
-      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json(
+        { error: "NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
     const chainId = Number(process.env.CHAIN_ID ?? 89);
     const contract = process.env.CONTRACT_ADDRESS ?? "";
 
-    // 2) URL PDF (Pinata)
+    // PDF từ Pinata
     const pdfUrl = `https://gateway.pinata.cloud/ipfs/${cert.ipfsCid}`;
-
-    // 3) (Tạm thời) chưa có metadataCid nên để null
-    const metadataUrl: string | null = null;
 
     return NextResponse.json({
       data: {
@@ -38,6 +38,7 @@ export async function GET(
           name: cert.user.name,
           email: cert.user.email,
           dob: cert.user.dob?.toISOString() ?? null,
+          walletAddress: cert.user.walletAddress ?? null, // ⭐ thêm tại đây
         },
         course: {
           title: cert.course.title,
@@ -47,10 +48,11 @@ export async function GET(
           chainId,
           contract,
           txHash: cert.txHash,
+          owner: cert.user.walletAddress ?? null, // ⭐ thêm tại đây
         },
         files: {
           pdf: pdfUrl,
-          metadata: metadataUrl,
+          metadata: null,
         },
       },
     });
