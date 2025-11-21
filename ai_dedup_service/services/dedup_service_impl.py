@@ -1,7 +1,17 @@
+# ai_dedup_service/services/dedup_service_impl.py
+
 import time
+import json
 from utils.pdf_utils import decode_base64_pdf, extract_pdf_text
 from utils.normalize import normalize_text, normalize_name
-from utils.hashers import sha256_hex, minhash_signature, simhash64, jaccard_estimate, hamming_distance
+from utils.hashers import (
+    sha256_hex,
+    minhash_signature,
+    simhash64,
+    jaccard_estimate,
+    hamming_distance,
+)
+from config import THRESH_UNIQUE, THRESH_DUPLICATE, TOPK
 
 
 class DedupService:
@@ -12,20 +22,20 @@ class DedupService:
         items_out = []
         start = time.time()
 
-        threshold_unique = options.get("thresholdUnique", 0.80)
-        threshold_duplicate = options.get("thresholdDuplicate", 0.95)
-        topk = options.get("topK", 3)
+        threshold_unique = float(options.get("thresholdUnique", THRESH_UNIQUE))
+        threshold_duplicate = float(options.get("thresholdDuplicate", THRESH_DUPLICATE))
+        topk = int(options.get("topK", TOPK))
+        max_hamming = int(options.get("maxHamming", 3))
 
         for it in items:
             # 1️⃣ Decode PDF
             pdf_bytes = decode_base64_pdf(it.pdfBase64)
 
-            # 2️⃣ SHA256 hash để nhận diện file trùng hệt
+            # 2️⃣ SHA256 EXACT DUPLICATE CHECK
             doc_hash = sha256_hex(pdf_bytes)
-
             ref = await self.repo.find_by_hash(doc_hash)
+
             if ref:
-                # Chống KeyError và hỗ trợ cả kiểu dict, Row, hoặc ORM object
                 ref_hash = ref.get("docHash") if isinstance(ref, dict) else getattr(ref, "docHash", None)
 
                 items_out.append({
@@ -35,35 +45,89 @@ class DedupService:
                     "matchedWith": [{
                         "refDocHash": ref_hash or "unknown",
                         "score": 1.0,
-                        "method": "sha256"
-                    }]
+                        "mhScore": 1.0,
+                        "simhashScore": 1.0,
+                        "hammingDist": 0,
+                        "method": "sha256",
+                    }],
+                    "docHash": doc_hash,
                 })
                 continue
 
-            # 3️⃣ Trích xuất văn bản từ PDF
+            # 3️⃣ Extract text
             text = extract_pdf_text(pdf_bytes)
             if not text or not text.strip():
                 items_out.append({
                     "certId": it.certId,
                     "similarityScore": 0.0,
                     "status": "parse_failed",
-                    "matchedWith": []
+                    "matchedWith": [],
+                    "docHash": doc_hash,
                 })
                 continue
 
-            # 4️⃣ Chuẩn hoá nội dung
+            # 4️⃣ Normalize
             norm = normalize_text(text)
 
-            # 5️⃣ Tạo fingerprint (MinHash + SimHash)
+            # 5️⃣ Build fingerprints
             mh_sig = minhash_signature(norm, k=128)
             sh64 = simhash64(norm)
 
-            # 6️⃣ (Tùy chọn) Tìm các ứng viên gần để so sánh
-            # Bạn có thể mở rộng sau bằng self.repo.find_similar(...)
+            # 6️⃣ Candidate search (simhash filter)
+            candidates = await self.repo.query_near_simhash(sh64, max_hamming=max_hamming)
+
             best_score = 0.0
             matched = []
 
-            # 7️⃣ Phân loại
+            for row in candidates:
+
+                # ❗ FIX 1 — Lọc record không hợp lệ (thiếu minhashSig)
+                if "minhashSig" not in row or row["minhashSig"] in (None, "null", ""):
+                    continue
+
+                raw = row["minhashSig"]
+
+                # ❗ FIX 2 — parse JSON string → list
+                try:
+                    if isinstance(raw, str):
+                        cand_sig = json.loads(raw)
+                    else:
+                        cand_sig = raw
+                except Exception:
+                    # ❗ Lỗi JSON → bỏ qua row
+                    continue
+
+                # ❗ FIX 3 — nếu minhashSig không phải list int → bỏ qua
+                if not isinstance(cand_sig, list):
+                    continue
+
+                # ✔ MinHash estimated Jaccard
+                mh_score = jaccard_estimate(mh_sig, cand_sig)
+
+                # ✔ SimHash distance
+                hd = int(row.get("hammingDist", 0))
+                simhash_score = 1.0 - float(hd) / 64.0
+
+                # ✔ Combined score
+                combined = 0.6 * mh_score + 0.4 * simhash_score
+
+                matched.append({
+                    "refDocHash": row["docHash"],
+                    "score": round(combined, 4),
+                    "mhScore": round(mh_score, 4),
+                    "simhashScore": round(simhash_score, 4),
+                    "hammingDist": hd,
+                    "method": "minhash+simhash",
+                })
+
+                if combined > best_score:
+                    best_score = combined
+
+            # Limit topK
+            matched.sort(key=lambda x: x["score"], reverse=True)
+            matched = matched[:topk]
+
+            # 7️⃣ Classification
             if best_score < threshold_unique:
                 status = "unique"
             elif best_score >= threshold_duplicate:
@@ -75,10 +139,11 @@ class DedupService:
                 "certId": it.certId,
                 "similarityScore": round(best_score, 4),
                 "status": status,
-                "matchedWith": matched
+                "matchedWith": matched,
+                "docHash": doc_hash,
             })
 
-            # 8️⃣ Lưu fingerprint vào DB corpus
+            # 8️⃣ Save to corpus
             await self.repo.upsert_doc({
                 "docHash": doc_hash,
                 "minhashSig": mh_sig,
@@ -86,14 +151,17 @@ class DedupService:
                 "studentNameNorm": normalize_name(it.studentName),
                 "dob": it.dob,
                 "course": it.course,
-                "source": "preview"
+                "source": "preview",
             })
 
-        # 9️⃣ Kết quả tổng hợp
+        # 9️⃣ Summary
         return {
             "results": items_out,
             "meta": {
                 "processed": len(items_out),
-                "durationMs": int((time.time() - start) * 1000)
-            }
+                "durationMs": int((time.time() - start) * 1000),
+                "thresholdUnique": threshold_unique,
+                "thresholdDuplicate": threshold_duplicate,
+                "topK": topk,
+            },
         }

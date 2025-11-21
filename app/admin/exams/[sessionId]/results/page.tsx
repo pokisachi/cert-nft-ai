@@ -17,11 +17,17 @@ type Row = {
 };
 
 type AIResult = {
-  certId: string;
+  id: number;
+  examResultId: number;
+  userId: number;
+  courseId: number;
+  preIssueHash: string;
+  status: "unique" | "duplicate" | "suspected_copy";
   similarityScore: number;
-  status: "unique" | "duplicate" | "error";
-  matchedWith?: { refDocHash: string; score: number }[];
+  checkedAt: string;
+  certId?: string;
 };
+
 
 export default function ExamResultPage({
   params,
@@ -57,6 +63,25 @@ export default function ExamResultPage({
       setLoading(false);
     })();
   }, [sessionId]);
+    // 🔹 Load AI Dedup từ DB — lấy theo userId + courseId
+        const fetchAIDedupFromDB = async () => {
+          try {
+            const res = await fetch(`/api/internal/ai/by-session/${sessionId}`);
+            const json = await res.json();
+
+            if (!res.ok) {
+              toast.error(json.error || "Không thể tải AI Dedup từ DB");
+              return;
+            }
+
+            setAIResults(json.results || []);
+            toast.success("🔄 Đã tải lại AI Dedup từ DB");
+          } catch (e) {
+            console.error("FETCH AI DB ERROR:", e);
+            toast.error("Lỗi tải AI Dedup từ DB");
+          }
+        };
+
 
   // 🔹 Lưu điểm thi
   const handleSave = async (examResultId: number, score: number | null) => {
@@ -169,23 +194,37 @@ export default function ExamResultPage({
     toast.info("🤖 Đang gửi dữ liệu PDF thật lên AI Dedup Service...");
 
     try {
-      const items = renderedList.map((c) => ({
-        certId: String(c.preIssueHash || c.metadata?.examResultId || `cert-${Math.random()}`),
-        studentName: c.name || "UNKNOWN",
-        dob: "",
-        course: c.metadata?.profile || "UNKNOWN",
-        pdfBase64: c.pdf?.base64?.trim() || "",
-        examResultId: c.metadata?.examResultId,
-        userId: c.metadata?.userId,
-        courseId: c.metadata?.courseId,
-      }));
+      // Create mapping of certId to database identifiers for later use
+      const certIdToDbIds: Record<string, { examResultId: number; userId: number; courseId: number }> = {};
+      
+      const items = renderedList.map((c) => {
+        const certId = String(c.preIssueHash || c.metadata?.examResultId || `cert-${Math.random()}`);
+        
+        // Store mapping for later use
+        certIdToDbIds[certId] = {
+          examResultId: c.metadata?.examResultId,
+          userId: c.metadata?.userId,
+          courseId: c.metadata?.courseId,
+        };
+        
+        return {
+          certId,
+          studentName: c.name || "UNKNOWN",
+          dob: "",
+          course: c.metadata?.profile || "UNKNOWN",
+          pdfBase64: c.pdf?.base64?.trim() || "",
+          examResultId: c.metadata?.examResultId,
+          userId: c.metadata?.userId,
+          courseId: c.metadata?.courseId,
+        };
+      });
 
       const validItems = items.filter((i) => i.pdfBase64.length > 0);
       if (!validItems.length)
         return toast.error("Không có PDF hợp lệ để gửi lên AI.");
 
       const res = await fetch(
-        "http://localhost:8001/api/admin/certificates/ai-dedup-check",
+        "/api/admin/certificates/ai-dedup-check",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -202,28 +241,38 @@ export default function ExamResultPage({
         return toast.error(`AI lỗi: ${data.detail || "422 Unprocessable Entity"}`);
       }
 
+      // Save AI results to DB
+      const savePromises = data.results.map(async (result: any) => {
+        // Get the original database identifiers using the certId
+        const dbIds = certIdToDbIds[result.certId];
+        
+        // Validate that we have the required database identifiers
+        if (!dbIds || !dbIds.examResultId || !dbIds.userId || !dbIds.courseId) {
+          console.error("Missing database identifiers for certId:", result.certId);
+          return Promise.resolve({ error: "Missing database identifiers" });
+        }
+        
+        const saveRes = await fetch("/api/internal/ai/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            examResultId: dbIds.examResultId,
+            userId: dbIds.userId,
+            courseId: dbIds.courseId,
+            similarityScore: result.similarityScore,
+            preIssueHash: result.docHash, // Use docHash as preIssueHash
+            status: result.status,
+          }),
+        });
+        return saveRes.json();
+      });
+
+      await Promise.all(savePromises);
+
       setAIResults(data.results || []);
       setAIChecked(true);
       toast.success(`✅ AI xử lý ${data.results?.length || 0} chứng chỉ!`);
 
-      // 🔸 Ghi từng kết quả AI vào DB qua API Next.js
-      for (let i = 0; i < validItems.length; i++) {
-        const c = validItems[i];
-        try {
-          await fetch("/api/internal/ai/check-and-save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              examResultId: c.examResultId,
-              userId: c.userId,
-              courseId: c.courseId,
-              pdfPreviewBase64: c.pdfBase64,
-            }),
-          });
-        } catch (err) {
-          console.warn("⚠️ Không thể lưu AI Dedup result:", err);
-        }
-      }
     } catch (err) {
       console.error("AI check failed:", err);
       toast.error("❌ Không thể kết nối tới AI Service.");
@@ -331,9 +380,10 @@ export default function ExamResultPage({
 
             const aiMatch = aiResults.find(
               (r) =>
-                r.certId === c.preIssueHash ||
-                r.certId === String(c.metadata?.examResultId)
+                r.userId === c.metadata?.userId &&
+                r.courseId === c.metadata?.courseId
             );
+
 
             return (
               <div
@@ -352,12 +402,19 @@ export default function ExamResultPage({
                     <code className="text-sm text-blue-600">
                       {c.preIssueHash?.slice(0, 16)}...
                     </code>
-                    {aiMatch && (
-                      <p className="text-sm mt-1">
-                        🧠 Kết quả AI: <b>{aiMatch.status}</b> (
-                        {Math.round(aiMatch.similarityScore * 100)}%)
-                      </p>
-                    )}
+                        {aiMatch ? (
+                          <p className="text-sm mt-1">
+                            🧠 Kết quả AI (DB):
+                            <b>{aiMatch.status}</b> – 
+                            {Math.round((aiMatch.similarityScore ?? 0) * 100)}%
+                          </p>
+                        ) : (
+                          <p className="text-sm mt-1 text-gray-500">
+                            (Chưa có kết quả AI trong DB)
+                          </p>
+                        )}
+
+
                   </div>
                   {pdfBlob ? (
                     <div className="flex gap-2">
@@ -387,20 +444,58 @@ export default function ExamResultPage({
             <Button variant="outline" onClick={handleAICheck}>
               🤖 Kiểm tra trùng lặp (AI)
             </Button>
+            <Button 
+              variant="outline"
+              onClick={fetchAIDedupFromDB}
+            >
+              🔄 Refresh AI (DB)
+            </Button>
+
           </div>
 
-          {aiChecked &&
-            aiResults.length > 0 &&
-            aiResults.every((r) => r.status === "unique") && (
+          {aiResults.length > 0 &&
+aiResults.every((r) => r.status === "unique")
+ && (
               <div className="text-center mt-5">
-                <Button
-                  onClick={() =>
-                    alert("🚀 Triển khai Smart Contract cấp chứng chỉ NFT!")
-                  }
-                  className="bg-purple-600 text-white hover:bg-purple-700"
-                >
-                  ✅ Cấp chứng chỉ NFT
-                </Button>
+                
+    <Button
+  onClick={async () => {
+    try {
+      toast.info("⛓️ Đang mint NFT...");
+for (const c of renderedList) {
+  const res = await fetch("/api/certificates/issue-final", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      examResultId: c.metadata?.examResultId,
+      issue_date: new Date().toISOString().split("T")[0],
+      certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
+      issuer_name: "UNET.edu.vn",
+      preIssueHash: c.preIssueHash, // AI check bắt buộc
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("MINT NFT ERROR:", data);
+    toast.error(data.error || "❌ Mint thất bại");
+    return;
+  }
+}
+
+
+      toast.success("🎉 Mint tất cả NFT thành công!");
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Mint NFT thất bại.");
+    }
+  }}
+  className="bg-purple-600 text-white hover:bg-purple-700"
+>
+  ✅ Cấp chứng chỉ NFT
+</Button>
+
               </div>
             )}
         </div>

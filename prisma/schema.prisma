@@ -149,9 +149,10 @@ model Certificate {
   userId       Int
   courseId     Int
   examResultId Int?     @unique
-  tokenId      String   @unique
+  tokenId      String   @unique      
   ipfsCid      String   @unique
-  docHash      String   @unique // ✅ SHA-256 của PDF
+  docHash      String   @unique
+  txHash       String?                
   issuedAt     DateTime @default(now())
   revoked      Boolean  @default(false)
   updatedAt    DateTime @updatedAt
