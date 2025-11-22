@@ -37,10 +37,20 @@ export default function MiniMapWidget() {
         if (!ignore) setBranches(data)
       })
       .catch(() => {})
+    try {
+      const cached = localStorage.getItem('userLoc')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+          setUserLoc(parsed)
+        }
+      }
+    } catch {}
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
         setUserLoc(loc)
+        try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
       },
       () => {
         setGeoError('Không thể lấy vị trí của bạn. Vui lòng bật Location.')
@@ -150,6 +160,16 @@ export default function MiniMapWidget() {
     if (bigLayerGroup.current) renderMarkers(bigLayerGroup.current)
   }, [branches, userLoc, nearest])
 
+  // Recenter maps when user location updates
+  useEffect(() => {
+    if (userLoc) {
+      try {
+        if (miniMapInst.current) miniMapInst.current.setView([userLoc.latitude, userLoc.longitude], 11)
+        if (bigMapInst.current) bigMapInst.current.setView([userLoc.latitude, userLoc.longitude], 13)
+      } catch {}
+    }
+  }, [userLoc])
+
   // Ensure Leaflet recalculates size when showing mini map after minimized
   useEffect(() => {
     if (!minimized && miniMapInst.current) {
@@ -215,7 +235,7 @@ export default function MiniMapWidget() {
           aria-label="Hiển thị gợi ý chi nhánh gần nhất"
         >
           {userLoc && nearest?.item
-            ? `⭐ ${nearest.item.name} – ${nearest.distance.toFixed(2)} km`
+            ? `Chi nhánh gần bạn nhất là: ${nearest.item.name} – ${nearest.distance.toFixed(2)} km`
             : 'Hãy bật vị trí để thấy chi nhánh gần bạn'}
         </button>
       ) : (
@@ -234,7 +254,7 @@ export default function MiniMapWidget() {
             />
             {nearest?.item && (
               <div className="absolute left-2 bottom-2 bg-white/90 text-xs rounded px-2 py-1 shadow">
-                ⭐ {nearest.item.name} – {nearest.distance.toFixed(2)} km
+                Chi nhánh gần bạn nhất là: {nearest.item.name} – {nearest.distance.toFixed(2)} km
               </div>
             )}
           </div>

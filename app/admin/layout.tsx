@@ -46,84 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 🔹 Header */}
-      <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          {/* Logo bên trái */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden p-2 rounded hover:bg-gray-100"
-              aria-label="Toggle menu"
-            >
-              ☰
-            </button>
-            <Link
-              href="/admin"
-              className="text-xl font-bold text-indigo-600 whitespace-nowrap"
-            >
-              FnNFT Admin
-            </Link>
-          </div>
-
-          {/* Menu giữa */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-700">
-            <Link href="/admin/verify" className="hover:text-indigo-600 transition">
-              Xác thực
-            </Link>
-            <Link href="/admin/branches" className="hover:text-indigo-600 transition">
-              Chi nhánh
-            </Link>
-          </nav>
-
-          {/* Avatar + Dropdown bên phải */}
-          <div className="relative flex items-center gap-3" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 focus:outline-none"
-            >
-              {user.avatarUrl ? (
-                <Image
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  width={32}
-                  height={32}
-                  className="rounded-full border"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
-                  {user.name?.[0]?.toUpperCase() || "A"}
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-700 hidden sm:inline">
-                {user.name}
-              </span>
-            </button>
-
-            {/* Dropdown */}
-            {menuOpen && (
-              <div className="absolute right-0 mt-12 w-44 bg-white border rounded-md shadow-md py-2 text-sm animate-fadeIn">
-                <Link
-                  href="/admin/profile"
-                  className="block px-4 py-2 hover:bg-gray-50 text-gray-700"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Hồ sơ quản trị
-                </Link>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    logout();
-                  }}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600"
-                >
-                  Đăng xuất
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Header admin đã loại bỏ theo yêu cầu */}
 
       {/* 🔹 Layout gồm sidebar + content */}
       <div className="flex flex-1">
@@ -205,6 +128,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
             >
               Rooms
+            </Link>
+            <Link
+              href="/admin/branches"
+              className={cn(
+                "block px-3 py-2 rounded hover:bg-indigo-50 hover:text-indigo-600",
+                pathname.startsWith("/admin/branches") && "bg-indigo-100 text-indigo-700"
+              )}
+            >
+              Quản lý Chi nhánh
             </Link>
           </nav>
         </aside>
