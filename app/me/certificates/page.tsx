@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -12,7 +13,7 @@ import type { CertificatesResponse, CertificateItem as CertItem } from '../hooks
 
 const PAGE_SIZE = 12;
 
-export default function CertificatesListPage() {
+function CertificatesContent() {
   const params = useSearchParams();
   const router = useRouter();
   const page = Math.max(1, Number(params.get('page') || '1'));
@@ -25,12 +26,12 @@ export default function CertificatesListPage() {
       const url = new URL('/api/me/certificates', window.location.origin);
       url.searchParams.set('limit', String(PAGE_SIZE));
       url.searchParams.set('offset', String(offset));
-      if (status) url.searchParams.set('status', status); // optional filter
+      if (status) url.searchParams.set('status', status);
       const res = await fetch(url.toString(), { credentials: 'include' });
       if (!res.ok) throw new Error('fetch certificates failed');
       return res.json();
     },
-     placeholderData: (prev) => prev,
+    placeholderData: (prev) => prev,
   });
 
   const setParam = (kv: Record<string, string | null>) => {
@@ -85,5 +86,13 @@ export default function CertificatesListPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function CertificatesListPage() {
+  return (
+    <Suspense fallback={<main className="p-6">Đang tải...</main>}>
+      <CertificatesContent />
+    </Suspense>
   );
 }

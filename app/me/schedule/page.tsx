@@ -1,8 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 
+type ScheduleRow = {
+  course: string;
+  teacher: string;
+  room: string;
+  dayOfWeek: string;
+  timeSlot: string;
+};
+
 export default function MySchedulePage() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<ScheduleRow[]>([]);
 
   useEffect(() => {
     fetch("/api/me/schedule")

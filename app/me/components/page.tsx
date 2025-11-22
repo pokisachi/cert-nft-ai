@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import type { AnnouncementsResponse, AnnouncementItem } from '../hooks/types';
 
 const PAGE_SIZE = 20;
 
-export default function AnnouncementsListPage() {
+function AnnouncementsContent() {
   const params = useSearchParams();
   const router = useRouter();
   const page = Math.max(1, Number(params.get('page') || '1'));
@@ -27,7 +28,6 @@ export default function AnnouncementsListPage() {
       const url = new URL('/api/me/announcements', window.location.origin);
       url.searchParams.set('limit', String(PAGE_SIZE));
       url.searchParams.set('offset', String(offset));
-      // (optional) BE có thể hỗ trợ lọc scope/unread qua query
       if (onlyUnread) url.searchParams.set('unread', '1');
       if (scope) url.searchParams.set('scope', scope);
       const res = await fetch(url.toString(), { credentials: 'include' });
@@ -145,5 +145,13 @@ export default function AnnouncementsListPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function AnnouncementsListPage() {
+  return (
+    <Suspense fallback={<main className="p-6">Đang tải...</main>}>
+      <AnnouncementsContent />
+    </Suspense>
   );
 }
