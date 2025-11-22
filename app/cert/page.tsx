@@ -26,7 +26,7 @@ function CertificatesPublicContent() {
       url.searchParams.set("pageSize", String(PAGE_SIZE));
       if (q) url.searchParams.set("q", q);
       if (status) url.searchParams.set("status", status);
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), { cache: "no-store" });
       if (!res.ok) throw new Error("fetch certificates failed");
       return res.json();
     },

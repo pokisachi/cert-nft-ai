@@ -269,9 +269,16 @@ export default function ExamResultPage({
 
       await Promise.all(savePromises);
 
-      setAIResults(data.results || []);
+      const results = Array.isArray(data.results) ? data.results : [];
+      await fetchAIDedupFromDB();
       setAIChecked(true);
-      toast.success(`✅ AI xử lý ${data.results?.length || 0} chứng chỉ!`);
+      const uniqueCount = results.filter((r: any) => r.status === "unique").length;
+      const dupCount = results.filter((r: any) => r.status === "duplicate").length;
+      const suspectCount = results.filter((r: any) => r.status === "suspected_copy").length;
+      toast.success(`✅ AI xử lý ${results.length} chứng chỉ (Unique: ${uniqueCount}, Duplicate: ${dupCount}, Suspected: ${suspectCount})`);
+      if (dupCount > 0 || suspectCount > 0) {
+        toast.warning("⚠️ Có chứng chỉ nghi trùng hoặc trùng lặp. Vui lòng kiểm tra.");
+      }
 
     } catch (err) {
       console.error("AI check failed:", err);
@@ -299,6 +306,33 @@ export default function ExamResultPage({
         >
           🧩 Tạo tất cả chứng chỉ
         </Button>
+        {aiResults.length > 0 && aiResults.every((r) => r.status === "unique") ? (
+          <Button
+            onClick={async () => {
+              try {
+                toast.info("🚀 Đang cấp tất cả (batch)...");
+                const r = await fetch("/api/certificates/issue-batch", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sessionId }),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                  return toast.error(`❌ Batch thất bại: ${data?.error || "Lỗi"}`);
+                }
+                const ok = (data.minted || []).length;
+                const fail = (data.skipped || []).length;
+                toast.success(`🎉 Batch: thành công ${ok}, thất bại ${fail}`);
+              } catch (e) {
+                console.error(e);
+                toast.error("❌ Batch cấp chứng chỉ lỗi.");
+              }
+            }}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            ✅ Cấp tất cả (batch)
+          </Button>
+        ) : null}
       </div>
 
       {rows.length === 0 ? (
@@ -354,6 +388,41 @@ export default function ExamResultPage({
                           🎓 Tạo chứng chỉ
                         </Button>
                       )}
+                      {r.status === "PASS" && (() => {
+                        const aiRow = aiResults.find(
+                          (a) => a.userId === r.user.id && a.courseId === sessionInfo?.course?.id
+                        );
+                        return aiRow && aiRow.status === "unique" ? (
+                          <Button
+                            className="bg-purple-600 text-white hover:bg-purple-700"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch("/api/certificates/issue-final", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    examResultId: r.examResultId,
+                                    issue_date: new Date().toISOString().split("T")[0],
+                                    certificate_code: `BF-${new Date().getFullYear()}-${r.examResultId}`,
+                                    issuer_name: "UNET.edu.vn",
+                                    preIssueHash: aiRow.preIssueHash,
+                                  }),
+                                });
+                                const payload = await res.json();
+                                if (!res.ok) {
+                                  return toast.error(`❌ ${r.user.name}: thất bại (${payload?.error || "Lỗi"})`);
+                                }
+                                toast.success(`✅ ${r.user.name}: cấp thành công (#${payload.tokenId})`);
+                              } catch (err) {
+                                console.error(err);
+                                toast.error("❌ Cấp chứng chỉ thất bại.");
+                              }
+                            }}
+                          >
+                            ✅ Cấp ngay
+                          </Button>
+                        ) : null;
+                      })()}
                     </>
                   )}
                 </td>
@@ -421,6 +490,39 @@ export default function ExamResultPage({
                       <Button variant="outline" onClick={() => window.open(pdfBlob, "_blank")}>
                         👁️ Xem
                       </Button>
+                      {aiMatch && aiMatch.status === "unique" ? (
+                        <Button
+                          className="bg-purple-600 text-white hover:bg-purple-700"
+                          onClick={async () => {
+                            try {
+                              const name = rows.find((r) => r.examResultId === c.metadata?.examResultId)?.user.name || "UNKNOWN";
+                              toast.info(`⛓️ Đang cấp chứng chỉ cho ${name}...`);
+                              const res = await fetch("/api/certificates/issue-final", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  examResultId: c.metadata?.examResultId,
+                                  issue_date: new Date().toISOString().split("T")[0],
+                                  certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
+                                  issuer_name: "UNET.edu.vn",
+                                  preIssueHash: c.preIssueHash,
+                                }),
+                              });
+                              const payload = await res.json();
+                              if (!res.ok) {
+                                toast.error(`❌ ${name}: thất bại (${payload?.error || "Lỗi"})`);
+                              } else {
+                                toast.success(`✅ ${name}: cấp thành công (#${payload.tokenId})`);
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("❌ Cấp chứng chỉ thất bại.");
+                            }
+                          }}
+                        >
+                          ✅ Cấp
+                        </Button>
+                      ) : null}
                       <a
                         href={pdfBlob}
                         download={`${c.name}_certificate.pdf`}
@@ -444,12 +546,6 @@ export default function ExamResultPage({
             <Button variant="outline" onClick={handleAICheck}>
               🤖 Kiểm tra trùng lặp (AI)
             </Button>
-            <Button 
-              variant="outline"
-              onClick={fetchAIDedupFromDB}
-            >
-              🔄 Refresh AI (DB)
-            </Button>
 
           </div>
 
@@ -459,42 +555,43 @@ aiResults.every((r) => r.status === "unique")
               <div className="text-center mt-5">
                 
     <Button
-  onClick={async () => {
-    try {
-      toast.info("⛓️ Đang mint NFT...");
-for (const c of renderedList) {
-  const res = await fetch("/api/certificates/issue-final", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      examResultId: c.metadata?.examResultId,
-      issue_date: new Date().toISOString().split("T")[0],
-      certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
-      issuer_name: "UNET.edu.vn",
-      preIssueHash: c.preIssueHash, // AI check bắt buộc
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    console.error("MINT NFT ERROR:", data);
-    toast.error(data.error || "❌ Mint thất bại");
-    return;
-  }
-}
-
-
-      toast.success("🎉 Mint tất cả NFT thành công!");
-    } catch (err) {
-      console.error(err);
-      toast.error("❌ Mint NFT thất bại.");
-    }
-  }}
-  className="bg-purple-600 text-white hover:bg-purple-700"
->
-  ✅ Cấp chứng chỉ NFT
-</Button>
+      onClick={async () => {
+        try {
+          toast.info("⛓️ Đang cấp chứng chỉ cho tất cả...");
+          const minted: Array<{ name: string; tokenId: string }> = [];
+          const failed: Array<{ name: string; reason: string }> = [];
+          for (const c of renderedList) {
+            const name = rows.find((r) => r.examResultId === c.metadata?.examResultId)?.user.name || "UNKNOWN";
+            const res = await fetch("/api/certificates/issue-final", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                examResultId: c.metadata?.examResultId,
+                issue_date: new Date().toISOString().split("T")[0],
+                certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
+                issuer_name: "UNET.edu.vn",
+                preIssueHash: c.preIssueHash,
+              }),
+            });
+            const payload = await res.json();
+            if (res.ok) {
+              minted.push({ name, tokenId: payload.tokenId });
+              toast.success(`✅ ${name}: cấp thành công (#${payload.tokenId})`);
+            } else {
+              failed.push({ name, reason: payload?.error || "ISSUE_FINAL_FAILED" });
+              toast.error(`❌ ${name}: thất bại (${payload?.error || "Lỗi"})`);
+            }
+          }
+          toast.success(`🎉 Tổng kết: thành công ${minted.length}, thất bại ${failed.length}`);
+        } catch (err) {
+          console.error(err);
+          toast.error("❌ Cấp chứng chỉ thất bại.");
+        }
+      }}
+      className="bg-purple-600 text-white hover:bg-purple-700"
+    >
+      ✅ Cấp chứng chỉ NFT (tất cả)
+    </Button>
 
               </div>
             )}
