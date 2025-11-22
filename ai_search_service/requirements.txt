@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+sentence-transformers
+numpy
+python-dotenv
+pypdf

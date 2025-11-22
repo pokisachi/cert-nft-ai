@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -17,6 +17,11 @@ function CertificatesPublicContent() {
   const page = Math.max(1, Number(params.get("page") || "1"));
   const q = (params.get("q") || "").trim();
   const status = (params.get("status") || "").trim() as "" | "VALID" | "REVOKED";
+  const [aiResults, setAiResults] = useState<Array<{ tokenId: string; courseTitle: string; userName: string | null; similarity_score: number }>>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfResults, setPdfResults] = useState<Array<{ tokenId: string; courseTitle: string; userName: string | null; similarity_score: number }>>([]);
+  const debounceRef = useRef<number | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["public", "certificates", { page, q, status }],
@@ -26,7 +31,7 @@ function CertificatesPublicContent() {
       url.searchParams.set("pageSize", String(PAGE_SIZE));
       if (q) url.searchParams.set("q", q);
       if (status) url.searchParams.set("status", status);
-      const res = await fetch(url.toString(), { cache: "no-store" });
+      const res = await fetch(url.toString());
       if (!res.ok) throw new Error("fetch certificates failed");
       return res.json();
     },
@@ -39,6 +44,31 @@ function CertificatesPublicContent() {
     router.push(`/cert?${qs.toString()}`);
   };
 
+  useEffect(() => {
+    if (!q) {
+      setAiResults([]);
+      return;
+    }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        setAiLoading(true);
+        const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
+        const url = `${base.replace(/\/$/, "")}/certificates/ai-search?query=${encodeURIComponent(q)}`;
+        const res = await fetch(url);
+        const data = await res.json().catch(() => []);
+        setAiResults(Array.isArray(data) ? data : []);
+      } catch {
+        setAiResults([]);
+      } finally {
+        setAiLoading(false);
+      }
+    }, 500);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [q]);
+
   return (
     <main className="mx-auto max-w-7xl p-4 md:p-8">
       <Card>
@@ -49,9 +79,7 @@ function CertificatesPublicContent() {
               className="rounded-md border px-2 py-1 text-sm"
               placeholder="Tìm theo tên khóa, token, IPFS"
               defaultValue={q}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setParam({ q: (e.target as HTMLInputElement).value, page: "1" });
-              }}
+              onChange={(e) => setParam({ q: (e.target as HTMLInputElement).value, page: "1" })}
             />
             <select
               className="rounded-md border px-2 py-1 text-sm"
@@ -63,10 +91,88 @@ function CertificatesPublicContent() {
               <option value="VALID">VALID</option>
               <option value="REVOKED">REVOKED</option>
             </select>
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                try {
+                  setPdfLoading(true);
+                  const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
+                  const url = `${base.replace(/\/$/, "")}/certificates/ai-search-pdf`;
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    const dataUrl = reader.result as string;
+                    const b64 = (dataUrl.split(",")[1] || "");
+                    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64: b64 }) });
+                    const data = await res.json().catch(() => []);
+                    setPdfResults(Array.isArray(data) ? data : []);
+                    if (Array.isArray(data) && data.length > 0) {
+                      router.push(`/cert/${data[0].tokenId}`);
+                    }
+                    setPdfLoading(false);
+                  };
+                  reader.onerror = () => {
+                    setPdfResults([]);
+                    setPdfLoading(false);
+                  };
+                  reader.readAsDataURL(f);
+                } catch {
+                  setPdfResults([]);
+                } finally {
+                  // handled in reader callbacks
+                }
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {pdfLoading ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full" />
+              ))}
+            </div>
+          ) : pdfResults.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {pdfResults.map((it) => (
+                <div key={it.tokenId} className="rounded border bg-white p-4 hover:shadow">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-gray-800">{it.courseTitle}</div>
+                    <span className="text-xs rounded px-2 py-0.5 bg-indigo-100 text-indigo-700">AI</span>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-600">Học viên: {it.userName || "—"}</div>
+                  <div className="mt-1 text-xs text-gray-600">Token: {it.tokenId}</div>
+                  <div className="mt-1 text-xs text-gray-600">Score: {it.similarity_score.toFixed(3)}</div>
+                </div>
+              ))}
+            </div>
+          ) : q ? (
+            aiLoading ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-40 w-full" />
+                ))}
+              </div>
+            ) : aiResults.length === 0 ? (
+              <p className="py-6 text-sm text-gray-600">Không có kết quả AI phù hợp.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {aiResults.map((it) => (
+                  <div key={it.tokenId} className="rounded border bg-white p-4 hover:shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-gray-800">{it.courseTitle}</div>
+                      <span className="text-xs rounded px-2 py-0.5 bg-indigo-100 text-indigo-700">AI</span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-600">Học viên: {it.userName || "—"}</div>
+                    <div className="mt-1 text-xs text-gray-600">Token: {it.tokenId}</div>
+                    <div className="mt-1 text-xs text-gray-600">Score: {it.similarity_score.toFixed(3)}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : isLoading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-40 w-full" />
