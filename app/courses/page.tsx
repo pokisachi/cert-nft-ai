@@ -85,6 +85,14 @@ export default function CoursesPage() {
                       src={course.thumbnailUrl}
                       alt={course.title}
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          "data:image/svg+xml;charset=utf-8,\
+                          <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'>\
+                            <rect width='100%' height='100%' fill='%23f3f4f6'/>\
+                            <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='16' font-family='Arial'>No Image</text>\
+                          </svg>";
+                      }}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400 text-sm">

@@ -50,12 +50,21 @@ export async function POST(req: NextRequest) {
     // 4) Tạo JWT session & set cookie httpOnly
     const token = await signSession({ uid: user.id, role: user.role, email: user.email });
 
-    (await cookies()).set("auth_token", token, {
+    const cookieStore = await cookies();
+    cookieStore.set("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 ngày
+    });
+
+    cookieStore.set("pc", user.profileCompleted ? "1" : "0", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     // 5) Trả role để client điều hướng

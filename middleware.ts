@@ -17,6 +17,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const token = req.cookies.get("auth_token")?.value;
+  const pc = req.cookies.get("pc")?.value === "1";
 
   if (!token) {
     if (pathname.startsWith("/api/")) {
@@ -32,6 +33,19 @@ export async function middleware(req: NextRequest) {
 
     if (pathname.startsWith("/admin") && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/me", req.url));
+    }
+
+    if (
+      (pathname.startsWith("/me") || pathname.startsWith("/api/me")) &&
+      !pc &&
+      !pathname.startsWith("/me/profile") &&
+      !pathname.startsWith("/api/me/profile") &&
+      pathname !== "/api/me"
+    ) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "PROFILE_INCOMPLETE" }, { status: 428 });
+      }
+      return NextResponse.redirect(new URL("/me/profile", req.url));
     }
 
     return NextResponse.next();

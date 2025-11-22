@@ -147,6 +147,11 @@ export default function CourseDetailPage() {
         toast.error(
           data.error || "Vui lòng hoàn thiện hồ sơ trước khi đăng ký."
         );
+      } else if (res.status === 428) {
+        toast.error("Vui lòng hoàn thiện hồ sơ cá nhân.");
+        setTimeout(() => {
+          window.location.href = "/me/profile";
+        }, 800);
       } else {
         toast.error(data.error || "Đã xảy ra lỗi không xác định.");
       }
@@ -201,6 +206,14 @@ export default function CourseDetailPage() {
                 }
                 alt={course.title}
                 className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "data:image/svg+xml;charset=utf-8,\
+                    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'>\
+                      <rect width='100%' height='100%' fill='%23f3f4f6'/>\
+                      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='16' font-family='Arial'>No Image</text>\
+                    </svg>";
+                }}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">

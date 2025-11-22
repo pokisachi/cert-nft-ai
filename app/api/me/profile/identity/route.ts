@@ -73,13 +73,21 @@ export async function PUT(req: Request) {
 
     const safeUser = { ...updated, row_version: Number(updated.row_version) };
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       { message: "Updated", user: safeUser },
       {
         status: 200,
         headers: { ETag: `W/"${safeUser.row_version}"` },
       }
     );
+    res.cookies.set("pc", "1", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return res;
   } catch (err: any) { // Cải thiện việc bắt lỗi
     console.error("[PUT /identity] Error:", err);
     // Bắt chính xác lỗi P2002 của Prisma để đưa ra thông báo thân thiện hơn

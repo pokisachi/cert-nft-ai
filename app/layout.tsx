@@ -3,6 +3,7 @@ import "./globals.css";
 import HeaderWrapper from "@/components/layout/HeaderWrapper";
 import Footer from "@/components/Footer";
 import  Providers  from "./providers"; 
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "FnNFT – Nền tảng chứng chỉ NFT cho giáo dục",
@@ -23,6 +24,7 @@ export default function RootLayout({
           <HeaderWrapper />
           <main className="flex-1">{children}</main>
           <Footer />
+          <Toaster />
         </Providers>
       </body>
     </html>
