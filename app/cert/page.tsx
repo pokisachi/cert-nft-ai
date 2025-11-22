@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -99,6 +100,7 @@ function CertificatesPublicContent() {
                 if (!f) return;
                 try {
                   setPdfLoading(true);
+                  toast.loading("Đang phân tích PDF...", { id: "ai-pdf" });
                   const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
                   const url = `${base.replace(/\/$/, "")}/certificates/ai-search-pdf`;
                   const reader = new FileReader();
@@ -109,22 +111,30 @@ function CertificatesPublicContent() {
                     const data = await res.json().catch(() => []);
                     setPdfResults(Array.isArray(data) ? data : []);
                     if (Array.isArray(data) && data.length > 0) {
+                      toast.success("Đã tìm thấy kết quả, đang mở...", { id: "ai-pdf" });
                       router.push(`/cert/${data[0].tokenId}`);
+                    } else {
+                      toast.info("Không có kết quả AI phù hợp", { id: "ai-pdf" });
                     }
                     setPdfLoading(false);
                   };
                   reader.onerror = () => {
                     setPdfResults([]);
+                    toast.error("Đọc PDF thất bại", { id: "ai-pdf" });
                     setPdfLoading(false);
                   };
                   reader.readAsDataURL(f);
                 } catch {
                   setPdfResults([]);
+                  toast.error("Lỗi khi gửi PDF đến AI", { id: "ai-pdf" });
                 } finally {
                   // handled in reader callbacks
                 }
               }}
             />
+            {pdfLoading && (
+              <span className="text-xs text-indigo-600">Đang phân tích PDF bằng AI...</span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
