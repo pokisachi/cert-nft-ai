@@ -52,6 +52,9 @@ export default function Header() {
           <Link href="/verify" className="hover:text-indigo-600">
             Xác thực
           </Link>
+          <Link href="/cert" className="hover:text-indigo-600">
+            Chứng chỉ
+          </Link>
           <Link href="/branches" className="hover:text-indigo-600">
             Chi nhánh
           </Link>
