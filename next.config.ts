@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
 
   // ✅ Giữ nguyên cấu hình Webpack gốc của bạn
   webpack: (config, { isServer }) => {
+    config.cache = false;
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

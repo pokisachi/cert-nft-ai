@@ -45,12 +45,12 @@ export default function HomePage() {
   }, [pinned]);
 
   return (
-    <main className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white text-gray-900">
+    <main className="min-h-screen flex flex-col bg-[#111318] text-white">
       {/* ✅ PHẦN TIN NỔI BẬT - NHỎ GỌN */}
       {pinned.length > 0 && (
-        <section className="bg-yellow-50 border-b border-yellow-300 py-2">
+        <section className="bg-[#1c1f27] border-b border-[#282d39] py-2">
           <div className="max-w-3xl mx-auto px-3 text-center">
-            <h2 className="text-base font-semibold text-yellow-700 mb-2 flex items-center justify-center gap-1">
+            <h2 className="text-base font-semibold text-white/80 mb-2 flex items-center justify-center gap-1">
               📢 Tin nổi bật
             </h2>
 
@@ -62,29 +62,28 @@ export default function HomePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.5 }}
-                  className="bg-white border border-yellow-200 shadow-sm rounded-md py-2 px-4 inline-block max-w-md"
+                  className="bg-[#282d39] border border-[#3b4354] rounded-md py-2 px-4 inline-block max-w-md"
                 >
-                  <h3 className="font-medium text-sm text-gray-900 truncate">
+                  <h3 className="font-medium text-sm text-white truncate">
                     {pinned[active].title}
                   </h3>
-                  <p className="text-xs text-gray-700 mt-1 line-clamp-2">
+                  <p className="text-xs text-white/80 mt-1 line-clamp-2">
                     {pinned[active].content}
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-white/60 mt-1">
                     {new Date(pinned[active].createdAt).toLocaleDateString("vi-VN")}
                   </p>
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* 🔘 Nút chuyển thủ công */}
             <div className="flex justify-center gap-1 mt-2">
               {pinned.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setActive(i)}
                   className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                    i === active ? "bg-yellow-600 scale-125" : "bg-yellow-300"
+                    i === active ? "bg-white scale-125" : "bg-white/40"
                   }`}
                 />
               ))}

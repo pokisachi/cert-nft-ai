@@ -41,12 +41,12 @@ function CertificatesContent() {
   };
 
   return (
-    <main className="mx-auto max-w-7xl p-4 md:p-8">
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Tất cả chứng chỉ</CardTitle>
+    <main className="mx-auto max-w-7xl p-4 md:p-8 bg-[#111318] text-white">
+      <Card variant="dark" className="border border-[#3b4354]">
+        <CardHeader className="flex items-center justify-between border-b border-[#3b4354]">
+          <CardTitle className="text-lg font-semibold text-white">Tất cả chứng chỉ</CardTitle>
           <select
-            className="rounded-md border px-2 py-1 text-sm"
+            className="rounded-md border border-[#3b4354] bg-[#1c1f27] text-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             value={status}
             onChange={(e) => setParam({ status: e.target.value || '', page: '1' })}
             aria-label="Lọc trạng thái chứng chỉ"
@@ -67,7 +67,7 @@ function CertificatesContent() {
               <AlertDescription><Button variant="link" onClick={() => refetch()}>Thử lại</Button></AlertDescription>
             </Alert>
           ) : (data?.items.length || 0) === 0 ? (
-            <p className="py-6 text-sm text-gray-600">Bạn sẽ thấy chứng chỉ sau khi đậu và được cấp.</p>
+            <p className="py-6 text-sm text-white/70">Bạn sẽ thấy chứng chỉ sau khi đậu và được cấp.</p>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

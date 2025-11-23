@@ -49,14 +49,14 @@ function CoursesContent() {
   };
 
   return (
-    <main className="mx-auto max-w-6xl p-4 md:p-8">
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Tất cả khóa học của tôi</CardTitle>
+    <main className="mx-auto max-w-6xl p-4 md:p-8 bg-[#111318] text-white">
+      <Card variant="dark" className="border border-[#3b4354]">
+        <CardHeader className="flex items-center justify-between border-b border-[#3b4354]">
+          <CardTitle className="text-lg font-semibold text-white">Tất cả khóa học của tôi</CardTitle>
           <div className="flex items-center gap-2">
             {/* Filter trạng thái */}
             <select
-              className="rounded-md border px-2 py-1 text-sm"
+              className="rounded-md border border-[#3b4354] bg-[#1c1f27] text-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               value={status}
               onChange={(e) => setParam({ status: e.target.value || '', page: '1' })}
               aria-label="Lọc theo trạng thái"
@@ -86,24 +86,29 @@ function CoursesContent() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Khóa học</TableHead>
-                      <TableHead>Bắt đầu</TableHead>
-                      <TableHead>Kết thúc</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Ngày thi dự kiến</TableHead>
+                <Table variant="dark">
+                  <TableHeader variant="dark">
+                    <TableRow variant="dark">
+                      <TableHead variant="dark">Khóa học</TableHead>
+                      <TableHead variant="dark">Bắt đầu</TableHead>
+                      <TableHead variant="dark">Kết thúc</TableHead>
+                      <TableHead variant="dark">Trạng thái</TableHead>
+                      <TableHead variant="dark">Ngày thi dự kiến</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {data!.items.map((c: CourseRow) => (
-                      <TableRow key={c.id}>
+                      <TableRow key={c.id} variant="dark">
                         <TableCell className="font-medium">{c.title}</TableCell>
                         <TableCell>{c.startDate ? dayjs(c.startDate).format('DD/MM/YYYY') : '-'}</TableCell>
                         <TableCell>{c.endDate ? dayjs(c.endDate).format('DD/MM/YYYY') : '-'}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${statusStyle[c.status]}`}>
+                          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium border ${
+                            c.status === 'UPCOMING' ? 'bg-blue-900/30 text-blue-300 border-blue-600/40' :
+                            c.status === 'ONGOING' ? 'bg-green-900/30 text-green-300 border-green-600/40' :
+                            c.status === 'COMPLETED' ? 'bg-gray-900/30 text-gray-300 border-gray-600/40' :
+                            'bg-slate-900/30 text-slate-300 border-slate-600/40'
+                          }`}>
                             {c.status}
                           </span>
                         </TableCell>

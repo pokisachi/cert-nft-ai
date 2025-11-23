@@ -10,19 +10,12 @@ export default function Footer({ content }: { content?: any }) {
     };
 
   return (
-    <footer className="py-10 bg-gray-900 text-gray-300 text-center">
-      <h4 className="text-lg font-semibold text-white mb-2">
-        {data.tagline}
-      </h4>
-      <p className="text-sm mb-6">{data.subline}</p>
-
-      <div className="flex justify-center gap-4 text-sm">
+    <footer className="py-10 bg-[#111318] text-center">
+      <h4 className="text-lg font-semibold text-white mb-2">{data.tagline}</h4>
+      <p className="text-sm text-white/70 mb-6">{data.subline}</p>
+      <div className="flex flex-wrap items-center justify-center gap-6">
         {data.links.map((link: string) => (
-          <a
-            key={link}
-            href="#"
-            className="hover:text-white transition-colors"
-          >
+          <a key={link} href="#" className="text-white/70 hover:text-white transition-colors">
             {link}
           </a>
         ))}

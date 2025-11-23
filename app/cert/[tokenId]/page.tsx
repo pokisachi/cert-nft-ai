@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { User, BookOpen, Link as LinkIcon, Hash } from "lucide-react";
 
 type CertDetailData = {
   tokenId: string;
@@ -36,7 +37,7 @@ export default function CertDetailPage({
       .then((json) => setData(json.data));
   }, [tokenId]);
 
-  if (!data) return <p className="p-6">Đang tải...</p>;
+  if (!data) return <p className="p-6 bg-[#111318] text-white">Đang tải...</p>;
 
   const issueDate = new Date(data.issuedAt).toLocaleDateString("vi-VN");
   const dob = data.student.dob
@@ -91,16 +92,16 @@ const downloadCertificate = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10">
-      <div className="max-w-6xl mx-auto px-4 space-y-10">
+    <div className="min-h-screen bg-[#111318] text-white py-10">
+      <div className="max-w-6xl mx-auto px-4 space-y-8">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <h1 className="text-3xl font-bold">🎓 Chứng chỉ #{data.tokenId}</h1>
-          <p className="text-sm text-slate-500">Ngày cấp: {issueDate}</p>
+          <span className="px-3 py-1 rounded-full text-xs bg-[#1c1f27] border border-[#3b4354] text-white/80">Ngày cấp: {issueDate}</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[2fr,3fr] gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-[520px,1fr] gap-8 items-start">
 
           {/* ============================
               LEFT SIDE — Certificate Preview
@@ -111,8 +112,8 @@ const downloadCertificate = () => {
             <div
               id="certificate-content"
               className="
-                relative w-full aspect-[3/4] rounded-xl shadow-lg overflow-hidden 
-                bg-white border border-slate-300
+                relative w-full aspect-[3/4] rounded-2xl shadow-xl overflow-hidden 
+                bg-white border border-slate-300 mx-auto
               "
               style={{
                 backgroundImage: "url(/cert-bg.png)",
@@ -160,14 +161,14 @@ const downloadCertificate = () => {
             {/* Buttons */}
             <button
               onClick={downloadCertificate}
-              className="w-full py-2 px-4 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700"
+              className="w-full py-3 px-4 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700"
             >
               📄 Tải chứng chỉ (PDF)
             </button>
 
             <button
               onClick={downloadCertificate}
-              className="w-full py-2 px-4 rounded-md bg-slate-700 text-white font-medium hover:bg-slate-800"
+              className="w-full py-3 px-4 rounded-md bg-slate-700 text-white font-medium hover:bg-slate-800"
             >
               🖨️ In chứng chỉ
             </button>
@@ -176,7 +177,7 @@ const downloadCertificate = () => {
               <a
                 href={scanUrl}
                 target="_blank"
-                className="w-full py-2 px-4 text-center rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700"
+                className="w-full py-3 px-4 text-center rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700"
               >
                 🔍 Kiểm tra On-chain
               </a>
@@ -189,40 +190,39 @@ const downloadCertificate = () => {
           <div className="space-y-6">
 
             {/* Student Info */}
-            <section className="bg-white p-5 rounded-lg border shadow-sm">
-              <h2 className="text-lg font-semibold mb-3">👤 Học viên</h2>
+            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
+              <div className="flex items-center gap-2 mb-3"><User className="h-5 w-5" /><h2 className="text-lg font-semibold">Học viên</h2></div>
               <p><b>Họ tên:</b> {data.student.name}</p>
-              <p><b>Email:</b> {data.student.email}</p>
+              <p className="break-all"><b>Email:</b> {data.student.email}</p>
               <p><b>Ngày sinh:</b> {dob}</p>
-              <p><b>Chủ sở hữu chứng chỉ (NFT):</b> {data.student.walletAddress || "—"}</p>
             </section>
 
             {/* Course Info */}
-            <section className="bg-white p-5 rounded-lg border shadow-sm">
-              <h2 className="text-lg font-semibold mb-3">📘 Khóa học</h2>
+            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
+              <div className="flex items-center gap-2 mb-3"><BookOpen className="h-5 w-5" /><h2 className="text-lg font-semibold">Khóa học</h2></div>
               <p><b>Tiêu đề:</b> {data.course.title}</p>
               <p><b>Danh mục:</b> {data.course.category}</p>
             </section>
 
             {/* Blockchain Info */}
-            <section className="bg-white p-5 rounded-lg border shadow-sm">
-              <h2 className="text-lg font-semibold mb-3">⛓️ Blockchain</h2>
+            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
+              <div className="flex items-center gap-2 mb-3"><Hash className="h-5 w-5" /><h2 className="text-lg font-semibold">Blockchain</h2></div>
 
               <p><b>Chain ID:</b> {data.blockchain.chainId}</p>
 
-              <p className="break-all">
+              <p className="break-all font-mono text-sm">
                 <b>Contract:</b> {data.blockchain.contract}
               </p>
 
-              <p className="break-all">
+              <p className="break-all font-mono text-sm">
                 <b>TxHash:</b> {data.blockchain.txHash || "—"}
               </p>
 
-              <p><b>Chủ sở hữu NFT:</b> {data.student.walletAddress || "—"}</p>
+              <p className="break-all"><b>Chủ sở hữu NFT:</b> {data.student.walletAddress || "—"}</p>
 
               {scanUrl && (
-                <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-200">
-                  <p className="text-sm font-medium mb-1 text-slate-700">
+                <div className="mt-4 p-3 rounded-md bg-blue-900/20 border border-blue-500/40">
+                  <p className="text-sm font-medium mb-1 text-blue-300">
                     Kiểm tra giao dịch on-chain:
                   </p>
 

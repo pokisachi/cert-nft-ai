@@ -21,10 +21,10 @@ export default function MyCoursesCard() {
   const { data, isLoading, isError, refetch } = useMyCourses(5);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-semibold">{t('myCourses')}</CardTitle>
-        <Link href="/me/courses" className="text-sm underline focus:outline-none focus:ring-2 focus:ring-offset-2">
+    <Card variant="dark" className="border border-[#3b4354]">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-[#3b4354]">
+        <CardTitle className="text-base font-semibold text-white">{t('myCourses')}</CardTitle>
+        <Link href="/me/courses" className="text-sm underline text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2">
           {t('viewAll')}
         </Link>
       </CardHeader>
@@ -57,25 +57,30 @@ export default function MyCoursesCard() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Course</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Exam date</TableHead>
+          <Table variant="dark">
+            <TableHeader variant="dark">
+              <TableRow variant="dark">
+                <TableHead variant="dark">Course</TableHead>
+                <TableHead variant="dark">Start</TableHead>
+                <TableHead variant="dark">End</TableHead>
+                <TableHead variant="dark">Status</TableHead>
+                <TableHead variant="dark">Exam date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data!.items.slice(0, 5).map((c: CourseRow) => (
-                <TableRow key={c.id} className="hover:bg-muted/40">
+                <TableRow key={c.id} variant="dark">
                   <TableCell className="font-medium">{c.title}</TableCell>
                   <TableCell>{fmtDate(c.startDate)}</TableCell>
                   <TableCell>{fmtDate(c.endDate)}</TableCell>
                   <TableCell>
                     <span
-                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${statusStyle[c.status]} ring-1 ring-inset ring-black/5`}
+                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium border ${
+                        c.status === 'UPCOMING' ? 'bg-blue-900/30 text-blue-300 border-blue-600/40' :
+                        c.status === 'ONGOING' ? 'bg-green-900/30 text-green-300 border-green-600/40' :
+                        c.status === 'COMPLETED' ? 'bg-gray-900/30 text-gray-300 border-gray-600/40' :
+                        'bg-slate-900/30 text-slate-300 border-slate-600/40'
+                      }`}
                       role="status"
                       aria-label={`status ${c.status}`}
                     >

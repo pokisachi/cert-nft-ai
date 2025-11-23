@@ -34,21 +34,21 @@ export default function CoursesPage() {
   return (
     <>
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-indigo-50 to-white text-center py-16 px-6">
+      <section className="bg-[#111318] text-center py-16 px-6">
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold text-indigo-700 mb-4"
+          className="text-4xl font-bold text-white mb-4"
         >
           Khóa học Public
         </motion.h1>
-        <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+        <p className="text-white/80 text-lg max-w-2xl mx-auto">
           Khám phá các khóa học nổi bật được phát hành công khai.
           Học tập minh bạch, xác thực bằng chứng chỉ NFT!
         </p>
       </section>
 
-      <main className="container mx-auto max-w-7xl px-6 py-10">
+      <main className="container mx-auto max-w-7xl px-6 py-10 bg-[#111318] text-white">
         {isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -65,7 +65,7 @@ export default function CoursesPage() {
             </AlertDescription>
           </Alert>
         ) : courses.length === 0 ? (
-          <p className="text-center text-gray-500 py-10">
+          <p className="text-center text-white/60 py-10">
             Hiện chưa có khóa học public nào.
           </p>
         ) : (
@@ -76,10 +76,10 @@ export default function CoursesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-gray-100 shadow-sm bg-white hover:shadow-lg transition overflow-hidden"
+                className="rounded-xl border border-[#3b4354] bg-[#1c1f27] hover:bg-[#272b33] transition overflow-hidden"
               >
                 {/* ✅ Hiển thị ảnh với field thumbnailUrl */}
-                <div className="relative w-full h-44 bg-gray-100">
+                <div className="relative w-full h-44 bg-[#282d39]">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
@@ -89,13 +89,13 @@ export default function CoursesPage() {
                         (e.currentTarget as HTMLImageElement).src =
                           "data:image/svg+xml;charset=utf-8,\
                           <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'>\
-                            <rect width='100%' height='100%' fill='%23f3f4f6'/>\
-                            <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='16' font-family='Arial'>No Image</text>\
+                            <rect width='100%' height='100%' fill='%231c1f27'/>\
+                            <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239da6b9' font-size='16' font-family='Arial'>No Image</text>\
                           </svg>";
                       }}
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                    <div className="flex items-center justify-center h-full text-white/50 text-sm">
                       Không có ảnh
                     </div>
                   )}
@@ -103,11 +103,11 @@ export default function CoursesPage() {
 
                 <div className="p-5 flex flex-col justify-between h-52">
                   <div>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-900 line-clamp-2">
+                    <h3 className="text-lg font-semibold mb-2 text-white line-clamp-2">
                       {course.title}
                     </h3>
                     <div
-                        className="text-sm text-gray-600 line-clamp-3 mb-3 prose prose-sm max-w-none"
+                        className="text-sm text-white/80 line-clamp-3 mb-3 prose prose-sm max-w-none"
                         dangerouslySetInnerHTML={{
                           __html: course.description || "",
                         }}
@@ -117,15 +117,13 @@ export default function CoursesPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded ${
-                        statusColor[course.status as CourseStatus]
-                      }`}
+                      className={`text-xs font-medium px-2 py-0.5 rounded bg-[#282d39] text-white/80`}
                     >
                       {course.status}
                     </span>
                     <Link
                       href={`/courses/${course.id}`}
-                      className="text-sm text-indigo-600 hover:underline font-medium"
+                      className="text-sm text-white hover:underline font-medium"
                     >
                       Xem chi tiết →
                     </Link>

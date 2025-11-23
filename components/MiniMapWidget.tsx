@@ -220,7 +220,7 @@ export default function MiniMapWidget() {
     <div className="fixed bottom-6 right-6 z-50">
       {minimized ? (
         <button
-          className="px-3 py-2 rounded-full shadow-lg bg-white border text-sm"
+          className="px-3 py-2 rounded-full shadow-lg bg-[#1c1f27] border border-[#3b4354] text-white text-sm"
           onClick={() => {
             if (!userLoc) {
               navigator.geolocation.getCurrentPosition(
@@ -239,12 +239,12 @@ export default function MiniMapWidget() {
             : 'Hãy bật vị trí để thấy chi nhánh gần bạn'}
         </button>
       ) : (
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden max-w-[90vw]">
-          <div className="flex items-center justify-between px-2 py-1 border-b">
+        <div className="bg-[#1c1f27] text-white rounded-lg shadow-lg border border-[#3b4354] overflow-hidden max-w-[90vw]">
+          <div className="flex items-center justify-between px-2 py-1 border-b border-[#3b4354]">
             <div className="text-sm font-medium">Mini Map</div>
             <div className="flex items-center gap-2">
-              <button className="text-xs px-2 py-1 border rounded" onClick={() => setExpanded(true)}>Mở rộng</button>
-              <button className="text-xs px-2 py-1 border rounded" onClick={() => setMinimized(true)}>Thu nhỏ</button>
+              <button className="text-xs px-2 py-1 border border-[#3b4354] rounded hover:bg-[#282d39]" onClick={() => setExpanded(true)}>Mở rộng</button>
+              <button className="text-xs px-2 py-1 border border-[#3b4354] rounded hover:bg-[#282d39]" onClick={() => setMinimized(true)}>Thu nhỏ</button>
             </div>
           </div>
           <div className="relative">
@@ -253,7 +253,7 @@ export default function MiniMapWidget() {
               className="w-[220px] h-[220px]"
             />
             {nearest?.item && (
-              <div className="absolute left-2 bottom-2 bg-white/90 text-xs rounded px-2 py-1 shadow">
+              <div className="absolute left-2 bottom-2 bg-[#1c1f27]/90 text-white text-xs rounded px-2 py-1 shadow border border-[#3b4354]">
                 Chi nhánh gần bạn nhất là: {nearest.item.name} – {nearest.distance.toFixed(2)} km
               </div>
             )}
@@ -263,10 +263,10 @@ export default function MiniMapWidget() {
 
       {expanded && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setExpanded(false)}>
-          <div className="bg-white rounded-lg shadow-xl w-[80vw] h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-2 border-b">
+          <div className="bg-[#1c1f27] text-white rounded-lg shadow-xl border border-[#3b4354] w-[80vw] h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[#3b4354]">
               <div className="font-semibold">Bản đồ chi tiết</div>
-              <button className="text-sm px-3 py-1 border rounded" onClick={() => setExpanded(false)}>Đóng</button>
+              <button className="text-sm px-3 py-1 border border-[#3b4354] rounded hover:bg-[#282d39]" onClick={() => setExpanded(false)}>Đóng</button>
             </div>
             <div ref={bigMapRef} className="w-full h-[calc(80vh-44px)]" />
           </div>

@@ -13,10 +13,10 @@ export default function MyCertificates() {
   const { data, isLoading, isError, refetch } = useMyCertificates(10);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-semibold">{t('myCertificates')}</CardTitle>
-        <Link href="/me/certificates" className="text-sm underline focus:outline-none focus:ring-2 focus:ring-offset-2">
+    <Card variant="dark" className="border border-[#3b4354]">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-[#3b4354]">
+        <CardTitle className="text-base font-semibold text-white">{t('myCertificates')}</CardTitle>
+        <Link href="/me/certificates" className="text-sm underline text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2">
           {t('viewAll')}
         </Link>
       </CardHeader>
@@ -41,7 +41,7 @@ export default function MyCertificates() {
             </AlertDescription>
           </Alert>
         ) : (data?.items?.length || 0) === 0 ? (
-          <div className="py-4 text-sm text-gray-600">{t('empty_certificates')}</div>
+          <div className="py-4 text-sm text-white/70">{t('empty_certificates')}</div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2">
             {data!.items.map((it: CertificateItem) => (

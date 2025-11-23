@@ -95,13 +95,13 @@ export default function BranchesPage() {
   }, [userLoc])
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6 bg-[#111318] text-white">
       <h1 className="text-2xl font-semibold">Danh sách chi nhánh</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg border">
+        <div className="bg-[#1c1f27] rounded-lg border border-[#3b4354]">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
+              <tr className="border-b border-[#3b4354] bg-[#282d39]">
                 <th className="text-left p-2">Tên</th>
                 <th className="text-left p-2">Địa chỉ</th>
                 <th className="text-left p-2">Khoảng cách</th>
@@ -109,7 +109,7 @@ export default function BranchesPage() {
             </thead>
             <tbody>
               {branches.map((b) => (
-                <tr key={b.id} className="border-b">
+                <tr key={b.id} className="border-b border-[#3b4354]">
                   <td className="p-2">{b.name}</td>
                   <td className="p-2">{b.address}</td>
                   <td className="p-2">{userLoc ? `${haversineKm(userLoc.latitude, userLoc.longitude, b.latitude, b.longitude).toFixed(2)} km` : '-'}</td>
@@ -118,7 +118,7 @@ export default function BranchesPage() {
             </tbody>
           </table>
         </div>
-        <div className="bg-white rounded-lg border p-2">
+        <div className="bg-[#1c1f27] rounded-lg border border-[#3b4354] p-2">
           <div ref={mapRef} className="w-full h-[60vh]" />
           <div className="text-sm mt-2">
             {nearest?.item ? (

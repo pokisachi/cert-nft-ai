@@ -15,10 +15,10 @@ export default function MyAnnouncements() {
   const { data, isLoading, isError, refetch, markRead } = useMyAnnouncements(5);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-semibold">{t('announcements')}</CardTitle>
-        <Link href="/me/announcements" className="text-sm underline focus:outline-none focus:ring-2 focus:ring-offset-2">
+    <Card variant="dark" className="border border-[#3b4354]">
+      <CardHeader className="flex flex-row items-center justify-between border-b border-[#3b4354]">
+        <CardTitle className="text-base font-semibold text-white">{t('announcements')}</CardTitle>
+        <Link href="/me/announcements" className="text-sm underline text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2">
           {t('viewAll')}
         </Link>
       </CardHeader>
@@ -43,7 +43,7 @@ export default function MyAnnouncements() {
             </AlertDescription>
           </Alert>
         ) : (data?.items?.length || 0) === 0 ? (
-          <div className="py-4 text-sm text-gray-600">{t('empty_announcements')}</div>
+          <div className="py-4 text-sm text-white/70">{t('empty_announcements')}</div>
         ) : (
           <ul className="divide-y">
             {data!.items.map((a: AnnouncementItem) => (
@@ -57,7 +57,7 @@ export default function MyAnnouncements() {
                       </Badge>
                     ) : null}
                   </div>
-                  <p className="text-xs text-gray-500">{fmtDate(a.createdAt, true)} • {a.scope}</p>
+                  <p className="text-xs text-[#9da6b9]">{fmtDate(a.createdAt, true)} • {a.scope}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {!a.isRead ? (

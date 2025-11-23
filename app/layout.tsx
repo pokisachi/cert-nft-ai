@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="min-h-screen flex flex-col bg-gray-50">
+      <body className="min-h-screen flex flex-col bg-[#111318]">
         <Providers>
           {/*  Header và Footer được render bên trong provider */}
           <HeaderWrapper />

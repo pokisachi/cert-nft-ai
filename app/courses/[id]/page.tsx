@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 // 🚀 ĐỊNH NGHĨA CÁC KHUNG GIỜ
@@ -163,7 +163,7 @@ export default function CourseDetailPage() {
   // ✅ Loading UI
   if (isLoading || !courseId) // 🔧 THAY ĐỔI: Chờ courseId sẵn sàng
     return (
-      <main className="max-w-4xl mx-auto p-8">
+      <main className="max-w-4xl mx-auto p-8 bg-[#111318] text-white">
         <Skeleton className="h-64 w-full mb-6" />
         <Skeleton className="h-6 w-1/3 mb-2" />
         <Skeleton className="h-4 w-full mb-2" />
@@ -174,7 +174,7 @@ export default function CourseDetailPage() {
   // ✅ Error UI
   if (isError || !course)
     return (
-      <main className="max-w-4xl mx-auto p-8">
+      <main className="max-w-4xl mx-auto p-8 bg-[#111318] text-white">
         <Alert variant="destructive">
           <AlertTitle>Lỗi</AlertTitle>
           <AlertDescription>
@@ -186,17 +186,17 @@ export default function CourseDetailPage() {
 
   // ✅ Render chi tiết khóa học
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">
+    <main className="max-w-4xl mx-auto p-8 bg-[#111318] text-white">
+      <Card variant="dark" className="border border-[#3b4354]">
+        <CardHeader className="border-b border-[#3b4354]">
+          <CardTitle className="text-2xl font-semibold text-white">
             {course.title}
           </CardTitle>
         </CardHeader>
 
         <CardContent>
           {/* Ảnh khóa học */}
-          <div className="relative w-full aspect-[16/9] mb-6 rounded-lg overflow-hidden bg-gray-100">
+          <div className="relative w-full aspect-[16/9] mb-6 rounded-lg overflow-hidden bg-[#1c1f27]">
             {course.thumbnail ? (
               <img
                 src={
@@ -210,26 +210,51 @@ export default function CourseDetailPage() {
                   (e.currentTarget as HTMLImageElement).src =
                     "data:image/svg+xml;charset=utf-8,\
                     <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'>\
-                      <rect width='100%' height='100%' fill='%23f3f4f6'/>\
-                      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='16' font-family='Arial'>No Image</text>\
+                      <rect width='100%' height='100%' fill='%231c1f27'/>\
+                      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239da6b9' font-size='16' font-family='Arial'>No Image</text>\
                     </svg>";
                 }}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="flex items-center justify-center h-full text-[#9da6b9]">
                 Không có ảnh
               </div>
             )}
           </div>
 
-          {/* Mô tả khóa học */}
-          <div
-            className="prose prose-indigo prose-sm sm:prose-base lg:prose-lg max-w-none mb-4 text-gray-800"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(course.description) }}
-          />
+          {/* Làm sạch mô tả: bỏ img rỗng và thêm class phù hợp dark */}
+          {(() => {
+            const raw = String(course.description || "");
+            const clean = (() => {
+              try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(raw, "text/html");
+                doc.querySelectorAll("img").forEach((img) => {
+                  const src = img.getAttribute("src") || "";
+                  if (!src || src === "#") {
+                    img.remove();
+                  } else {
+                    img.classList.add("max-w-full", "rounded-md", "border", "border-[#3b4354]", "mx-auto", "my-3");
+                  }
+                });
+                doc.querySelectorAll("a").forEach((a) => {
+                  a.classList.add("text-indigo-300", "underline", "underline-offset-2");
+                });
+                doc.querySelectorAll("p, li, span").forEach((el) => {
+                  el.classList.add("text-white");
+                });
+                return DOMPurify.sanitize(doc.body.innerHTML);
+              } catch {
+                return DOMPurify.sanitize(raw);
+              }
+            })();
+            return (
+              <div className="max-w-none mb-4" dangerouslySetInnerHTML={{ __html: clean }} />
+            );
+          })()}
 
           {/* Thông tin chi tiết */}
-          <div className="text-sm text-gray-600 space-y-1 mb-4">
+          <div className="text-sm text-[#9da6b9] space-y-1 mb-4">
             <p>
               📅 Bắt đầu:{" "}
               {course.startDate
@@ -254,30 +279,30 @@ export default function CourseDetailPage() {
           {/* 2. 🚀 GIAO DIỆN CHỌN LỊCH MỚI (DẠNG BẢNG) */}
           {!enrolled && (
             <div className="mb-4">
-              <h3 className="text-base font-medium mb-3 text-gray-800">
+              <h3 className="text-base font-medium mb-3 text-white">
                 Vui lòng chọn TẤT CẢ các khung giờ bạn có thể học:
               </h3>
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto rounded-lg border border-[#3b4354]">
+                <table className="min-w-full divide-y divide-[#3b4354]">
+                  <thead className="bg-[#282d39]">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-[#9da6b9] uppercase tracking-wider">
                         Ca học
                       </th>
                       {DAYS.map((day) => (
                         <th
                           key={day.value}
-                          className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="px-4 py-3 text-center text-xs font-medium text-[#9da6b9] uppercase tracking-wider"
                         >
                           {day.label}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-[#1c1f27] divide-y divide-[#3b4354]">
                     {TIME_SLOTS.map((slot) => (
                       <tr key={slot.value}>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">
                           {slot.label}
                         </td>
                         {DAYS.map((day) => {
@@ -298,7 +323,7 @@ export default function CourseDetailPage() {
                               className={`px-4 py-3 text-center cursor-pointer transition-colors text-lg font-semibold ${
                                 active
                                   ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                  : "bg-white text-gray-500 hover:bg-gray-100"
+                                  : "bg-[#1c1f27] text-[#9da6b9] hover:bg-[#272b33]"
                               }`}
                             >
                               {active ? "✓" : ""}
@@ -392,7 +417,7 @@ export default function CourseDetailPage() {
 
             <Button
               variant="outline"
-              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              className="border-indigo-600 text-indigo-300 hover:bg-indigo-900/20"
             >
               Tư vấn
             </Button>

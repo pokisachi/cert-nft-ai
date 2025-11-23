@@ -60,46 +60,46 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-indigo-50 to-white px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#111318] px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md rounded-xl border border-gray-100 bg-white p-8 shadow-lg backdrop-blur-sm"
+        className="w-full max-w-md rounded-xl border border-[#3b4354] bg-[#1c1f27] p-8 shadow-lg backdrop-blur-sm"
       >
-        <h1 className="mb-2 text-3xl font-bold text-center text-indigo-700">
+        <h1 className="mb-2 text-3xl font-bold text-center text-white">
           Đăng nhập
         </h1>
-        <p className="mb-6 text-sm text-gray-500 text-center">
+        <p className="mb-6 text-sm text-white/70 text-center">
           Nhập email để nhận mã đăng nhập (Magic OTP).
         </p>
 
         <form onSubmit={onSubmit} noValidate className="space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium">
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-white/90">
               Email
             </label>
             <input
               id="email"
               type="email"
               placeholder="you@example.com"
-              className={`w-full rounded-md border px-3 py-2 outline-none transition focus:ring-2 ${
+              className={`w-full rounded-md border px-3 py-2 outline-none transition focus:ring-2 bg-[#111318] text-white ${
                 error
                   ? "border-red-500 focus:ring-red-200"
-                  : "border-gray-300 focus:ring-indigo-200"
+                  : "border-[#3b4354] focus:ring-[#2161ed]/30"
               }`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
             />
             {error && (
-              <p className="mt-1 text-sm text-red-600 animate-pulse">{error}</p>
+              <p className="mt-1 text-sm text-red-400 animate-pulse">{error}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-white font-medium transition hover:bg-indigo-700 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-[#2161ed] px-4 py-2 text-white font-bold transition hover:bg-[#1c51d6] disabled:opacity-60"
           >
             {loading ? "Đang gửi..." : "Gửi mã đăng nhập"}
           </button>
@@ -111,7 +111,7 @@ export default function LoginPage() {
         </div>
       </motion.div>
 
-      <p className="mt-8 text-xs text-gray-400">
+      <p className="mt-8 text-xs text-white/60">
         © 2025 FnNFT • Blockchain • AI • WebGIS
       </p>
     </div>
