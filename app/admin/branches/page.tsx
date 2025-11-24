@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Branch } from '@/lib/branchStore'
-import { haversineKm, findNearest } from '@/lib/geo'
+import { Building2 } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function AdminBranchesPage() {
   const router = useRouter()
@@ -74,53 +77,57 @@ export default function AdminBranchesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Quản lý chi nhánh</h1>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
+    <main className="p-6 bg-[#111318] text-white min-h-[calc(100vh-64px)]">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-semibold inline-flex items-center gap-2"><Building2 className="h-5 w-5" />Quản lý chi nhánh</h1>
+        {error && <div className="text-red-400 text-sm">{error}</div>}
 
-      <div className="bg-white rounded-lg border p-4 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input className="border rounded px-3 py-2" placeholder="ID" value={form.id ?? ''} onChange={(e) => setForm({ ...form, id: e.target.value })} />
-          <input className="border rounded px-3 py-2" placeholder="Tên chi nhánh" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="border rounded px-3 py-2 md:col-span-2" placeholder="Địa chỉ" value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <input className="border rounded px-3 py-2" placeholder="Latitude" type="number" value={form.latitude ?? 0} onChange={(e) => setForm({ ...form, latitude: Number(e.target.value) })} />
-          <input className="border rounded px-3 py-2" placeholder="Longitude" type="number" value={form.longitude ?? 0} onChange={(e) => setForm({ ...form, longitude: Number(e.target.value) })} />
-        </div>
-        <div className="flex gap-2">
-          <button className="px-3 py-2 border rounded" onClick={submit} disabled={loading}>{editingId ? 'Cập nhật' : 'Thêm mới'}</button>
-          <button className="px-3 py-2 border rounded" onClick={resetForm}>Làm mới</button>
-        </div>
-      </div>
+        <Card variant="dark" className="p-4 space-y-3 border-[#3b4354]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="ID" value={form.id ?? ''} onChange={(e) => setForm({ ...form, id: e.target.value })} />
+            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Tên chi nhánh" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input className="md:col-span-2 border border-[#3b4354] bg-[#12151b] text-white" placeholder="Địa chỉ" value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Latitude" type="number" value={form.latitude ?? 0} onChange={(e) => setForm({ ...form, latitude: Number(e.target.value) })} />
+            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Longitude" type="number" value={form.longitude ?? 0} onChange={(e) => setForm({ ...form, longitude: Number(e.target.value) })} />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={submit} disabled={loading} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">{editingId ? 'Cập nhật' : 'Thêm mới'}</Button>
+            <Button variant="outline" className="border-[#3b4354] text-white" onClick={resetForm}>Làm mới</Button>
+          </div>
+        </Card>
 
-      <div className="bg-white rounded-lg border">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="text-left p-2">ID</th>
-              <th className="text-left p-2">Tên</th>
-              <th className="text-left p-2">Địa chỉ</th>
-              <th className="text-left p-2">Lat</th>
-              <th className="text-left p-2">Lng</th>
-              <th className="text-left p-2">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((b) => (
-              <tr key={b.id} className="border-b">
-                <td className="p-2">{b.id}</td>
-                <td className="p-2">{b.name}</td>
-                <td className="p-2">{b.address}</td>
-                <td className="p-2">{b.latitude}</td>
-                <td className="p-2">{b.longitude}</td>
-                <td className="p-2 flex gap-2">
-                  <button className="px-2 py-1 border rounded" onClick={() => { setForm(b); setEditingId(b.id) }}>Sửa</button>
-                  <button className="px-2 py-1 border rounded" onClick={() => remove(b.id)}>Xóa</button>
-                </td>
+        <Card variant="dark" className="border-[#3b4354]">
+          <table className="min-w-full text-sm bg-[#1c1f27] text-white">
+            <thead>
+              <tr className="bg-[#232734]">
+                <th className="text-left p-3 border-b border-[#3b4354]">ID</th>
+                <th className="text-left p-3 border-b border-[#3b4354]">Tên</th>
+                <th className="text-left p-3 border-b border-[#3b4354]">Địa chỉ</th>
+                <th className="text-left p-3 border-b border-[#3b4354]">Lat</th>
+                <th className="text-left p-3 border-b border-[#3b4354]">Lng</th>
+                <th className="text-left p-3 border-b border-[#3b4354]">Thao tác</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((b) => (
+                <tr key={b.id} className="border-t border-[#2b3040] hover:bg-[#242833]">
+                  <td className="p-3">{b.id}</td>
+                  <td className="p-3">{b.name}</td>
+                  <td className="p-3 text-[#9da6b9]">{b.address}</td>
+                  <td className="p-3 text-[#9da6b9]">{b.latitude}</td>
+                  <td className="p-3 text-[#9da6b9]">{b.longitude}</td>
+                  <td className="p-3">
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="border-[#3b4354] text-white" onClick={() => { setForm(b); setEditingId(b.id) }}>Sửa</Button>
+                      <Button variant="destructive" onClick={() => remove(b.id)}>Xóa</Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       </div>
-    </div>
+    </main>
   )
 }

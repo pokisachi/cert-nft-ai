@@ -38,6 +38,18 @@ export default function SafeReactQuill({ value, onChange }: SafeReactQuillProps)
           ],
         }}
       />
+      <style>{`
+        .ql-toolbar.ql-snow { background:#0f1318; border-color:#3b4354; color:#e5e7eb }
+        .ql-container.ql-snow { border-color:#3b4354; background:#0f1318 }
+        .ql-editor { color:#ffffff }
+        .ql-snow .ql-picker, .ql-snow .ql-picker-label { color:#e5e7eb }
+        .ql-snow .ql-picker-options { background:#1c1f27; color:#ffffff; border-color:#3b4354 }
+        .ql-snow .ql-stroke { stroke:#cbd5e1 }
+        .ql-snow .ql-fill { fill:#cbd5e1 }
+        .ql-snow .ql-picker.ql-expanded .ql-picker-label { color:#ffffff }
+        .ql-snow .ql-tooltip { background:#1c1f27; border-color:#3b4354; color:#ffffff }
+        .ql-snow .ql-tooltip input[type=text] { background:#0f1318; border-color:#3b4354; color:#ffffff }
+      `}</style>
     </div>
   );
 }

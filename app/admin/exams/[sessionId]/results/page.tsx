@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { use } from "react";
 
@@ -41,6 +42,8 @@ export default function ExamResultPage({
   const [renderedList, setRenderedList] = useState<any[]>([]);
   const [aiResults, setAIResults] = useState<AIResult[]>([]);
   const [aiChecked, setAIChecked] = useState(false);
+  const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
+  const [confirmIssueAllOpen, setConfirmIssueAllOpen] = useState(false);
 
   // 🔹 Load dữ liệu ca thi
   useEffect(() => {
@@ -107,6 +110,10 @@ export default function ExamResultPage({
   // 🎓 Render chứng chỉ từng học viên
   const handleRenderOne = async (r: Row) => {
     try {
+      if (r.certificate?.id) {
+        toast.warning("Học viên này đã có chứng chỉ. Không thể tạo lại.");
+        return;
+      }
       toast.info(`Đang tạo chứng chỉ cho ${r.user.name}...`);
       const res = await fetch(`/api/certificates/render`, {
         method: "POST",
@@ -132,9 +139,14 @@ export default function ExamResultPage({
 
   // 🧩 Render tất cả học viên PASS
   const handleRenderAll = async () => {
-    const passList = rows.filter((r) => r.status === "PASS" && !r.locked);
+    const passList = rows.filter((r) => r.status === "PASS" && !r.locked && !r.certificate?.id);
+    const skippedCount = rows.filter((r) => r.status === "PASS" && !r.locked && !!r.certificate?.id).length;
     if (!passList.length)
       return toast.error("Không có học viên nào đủ điều kiện.");
+
+    if (skippedCount > 0) {
+      toast.warning(`Bỏ qua ${skippedCount} học viên đã có chứng chỉ.`);
+    }
 
     toast.info(`Đang tạo chứng chỉ cho ${passList.length} học viên...`);
     const rendered: any[] = [];
@@ -295,62 +307,47 @@ export default function ExamResultPage({
         ).toLocaleDateString("vi-VN")})`
       : `#${sessionId}`;
 
+  const courseTitle = sessionInfo?.course?.title?.toUpperCase() || "";
+  const isToeic = courseTitle.includes("TOEIC");
+  const isTinhoc = courseTitle.includes("TINHOC") || courseTitle.includes("TIN HỌC") || courseTitle.includes("TINHỌC");
+  const scoreMax = isToeic ? 990 : isTinhoc ? 10 : 100;
+  const scoreStep = isTinhoc ? 0.1 : 1;
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 bg-[#111318] text-white">
       <h1 className="text-2xl font-semibold">Nhập điểm thi khóa học: {title}</h1>
 
       <div className="flex justify-end gap-3 mb-3">
         <Button
           onClick={handleRenderAll}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white"
         >
-          🧩 Tạo tất cả chứng chỉ
+          Tạo tất cả chứng chỉ
         </Button>
         {aiResults.length > 0 && aiResults.every((r) => r.status === "unique") ? (
-          <Button
-            onClick={async () => {
-              try {
-                toast.info("🚀 Đang cấp tất cả (batch)...");
-                const r = await fetch("/api/certificates/issue-batch", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ sessionId }),
-                });
-                const data = await r.json();
-                if (!r.ok) {
-                  return toast.error(`❌ Batch thất bại: ${data?.error || "Lỗi"}`);
-                }
-                const ok = (data.minted || []).length;
-                const fail = (data.skipped || []).length;
-                toast.success(`🎉 Batch: thành công ${ok}, thất bại ${fail}`);
-              } catch (e) {
-                console.error(e);
-                toast.error("❌ Batch cấp chứng chỉ lỗi.");
-              }
-            }}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
-          >
+          <Button onClick={() => setConfirmBatchOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white">
             ✅ Cấp tất cả (batch)
           </Button>
         ) : null}
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-gray-500 mt-4">❌ Hiện chưa có học viên nào.</p>
+        <p className="text-white/70 mt-4">❌ Hiện chưa có học viên nào.</p>
       ) : (
-        <table className="min-w-full border-collapse bg-white rounded shadow-sm">
-          <thead className="bg-gray-100">
+        <div className="border border-[#3b4354] rounded-2xl overflow-x-auto scroll-dark">
+        <table className="min-w-full text-sm bg-[#1c1f27] text-white rounded-2xl overflow-hidden">
+          <thead className="bg-[#282d39]">
             <tr>
-              <th className="p-3 text-left">Học viên</th>
-              <th className="p-3 text-left">Ngày sinh</th>
-              <th className="p-3 text-left">Điểm</th>
-              <th className="p-3 text-left">Trạng thái</th>
-              <th className="p-3 text-left">Hành động</th>
+              <th className="p-3 text-left text-[#9da6b9]">Học viên</th>
+              <th className="p-3 text-left text-[#9da6b9]">Ngày sinh</th>
+              <th className="p-3 text-left text-[#9da6b9]">Điểm</th>
+              <th className="p-3 text-left text-[#9da6b9]">Trạng thái</th>
+              <th className="p-3 text-left text-[#9da6b9]">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.examResultId} className="border-t">
+              <tr key={r.examResultId} className="border-t border-[#3b4354] hover:bg-[#272b33]">
                 <td className="p-3">{r.user.name}</td>
                 <td className="p-3">
                   {r.user.dob
@@ -362,8 +359,9 @@ export default function ExamResultPage({
                     type="number"
                     defaultValue={r.score ?? ""}
                     min={0}
-                    max={990}
-                    className="border rounded px-2 py-1 w-20"
+                    max={scoreMax}
+                    step={scoreStep}
+                    className="border border-[#3b4354] bg-[#12151b] text-white rounded px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     disabled={r.locked}
                     onBlur={(e) =>
                       handleSave(r.examResultId, Number(e.target.value))
@@ -371,55 +369,57 @@ export default function ExamResultPage({
                   />
                 </td>
                 <td className="p-3">
-                  {r.status === "PASS" && "✅ PASS"}
-                  {r.status === "FAIL" && "❌ FAIL"}
-                  {r.status === "PENDING" && "⌛ Đang chờ"}
+                  {r.status === "PASS" && <span className="text-emerald-300">PASS</span>}
+                  {r.status === "FAIL" && <span className="text-red-300">FAIL</span>}
+                  {r.status === "PENDING" && <span className="text-white/70">Đang chờ</span>}
+                  {r.certificate?.id ? (
+                    <span className="ml-2 text-xs rounded px-2 py-0.5 bg-indigo-900/30 text-indigo-300 border border-indigo-500/40">Đã cấp chứng chỉ</span>
+                  ) : null}
                 </td>
                 <td className="p-3 space-x-2">
                   {r.locked ? (
-                    <span className="text-gray-400 text-sm">🔒 Đã khóa</span>
+                    <span className="text-white/50 text-sm">Đã khóa</span>
                   ) : (
                     <>
-                      <Button onClick={() => handleSave(r.examResultId, r.score ?? 0)}>
-                        Lưu
-                      </Button>
-                      {r.status === "PASS" && (
-                        <Button variant="outline" onClick={() => handleRenderOne(r)}>
-                          🎓 Tạo chứng chỉ
-                        </Button>
-                      )}
+                       {/* autosave onBlur đã áp dụng; không cần nút Lưu */}
+                       {r.status === "PASS" && (
+                         <Button variant="outline" onClick={() => handleRenderOne(r)} className="border-[#3b4354] text-white hover:bg-[#232734]">
+                           Tạo chứng chỉ
+                         </Button>
+                       )}
                       {r.status === "PASS" && (() => {
                         const aiRow = aiResults.find(
                           (a) => a.userId === r.user.id && a.courseId === sessionInfo?.course?.id
                         );
                         return aiRow && aiRow.status === "unique" ? (
-                          <Button
-                            className="bg-purple-600 text-white hover:bg-purple-700"
-                            onClick={async () => {
-                              try {
-                                const res = await fetch("/api/certificates/issue-final", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    examResultId: r.examResultId,
-                                    issue_date: new Date().toISOString().split("T")[0],
-                                    certificate_code: `BF-${new Date().getFullYear()}-${r.examResultId}`,
-                                    issuer_name: "UNET.edu.vn",
-                                    preIssueHash: aiRow.preIssueHash,
-                                  }),
-                                });
-                                const payload = await res.json();
-                                if (!res.ok) {
-                                  return toast.error(`❌ ${r.user.name}: thất bại (${payload?.error || "Lỗi"})`);
-                                }
-                                toast.success(`✅ ${r.user.name}: cấp thành công (#${payload.tokenId})`);
-                              } catch (err) {
-                                console.error(err);
-                                toast.error("❌ Cấp chứng chỉ thất bại.");
+                          <Button className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 text-white hover:opacity-90" onClick={async () => {
+                            try {
+                              if (r.certificate?.id) {
+                                toast.warning("Học viên này đã có chứng chỉ. Không thể cấp lại.");
+                                return;
                               }
-                            }}
-                          >
-                            ✅ Cấp ngay
+                              const res = await fetch("/api/certificates/issue-final", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  examResultId: r.examResultId,
+                                  issue_date: new Date().toISOString().split("T")[0],
+                                  certificate_code: `BF-${new Date().getFullYear()}-${r.examResultId}`,
+                                  issuer_name: "UNET.edu.vn",
+                                  preIssueHash: aiRow.preIssueHash,
+                                }),
+                              });
+                              const payload = await res.json();
+                              if (!res.ok) {
+                                return toast.error(`❌ ${r.user.name}: thất bại (${payload?.error || "Lỗi"})`);
+                              }
+                              toast.success(`✅ ${r.user.name} đã cấp (#${payload.tokenId})`);
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("❌ Cấp chứng chỉ thất bại");
+                            }
+                          }}>
+                            Cấp ngay
                           </Button>
                         ) : null;
                       })()}
@@ -430,12 +430,13 @@ export default function ExamResultPage({
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {/* Danh sách chứng chỉ render */}
       {renderedList.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-50 border rounded">
-          <h3 className="font-semibold mb-3">📄 Danh sách chứng chỉ đã render:</h3>
+        <div className="mt-6 p-4 bg-[#12151b] border border-[#3b4354] rounded">
+          <h3 className="font-semibold mb-3 text-white">📄 Danh sách chứng chỉ đã render:</h3>
 
           {renderedList.map((c, i) => {
             const pdfBlob = c.pdf?.base64
@@ -457,28 +458,28 @@ export default function ExamResultPage({
             return (
               <div
                 key={i}
-                className={`border rounded p-3 bg-white mb-2 ${
+                className={`border rounded p-3 mb-2 text-white ${
                   aiMatch
                     ? aiMatch.status === "unique"
-                      ? "border-green-400 bg-green-50"
-                      : "border-yellow-400 bg-yellow-50"
-                    : ""
+                      ? "border-emerald-500 bg-emerald-900/20"
+                      : "border-yellow-500 bg-yellow-900/20"
+                    : "border-[#3b4354] bg-[#1c1f27]"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{i + 1}. {c.name}</p>
-                    <code className="text-sm text-blue-600">
+                    <p className="font-medium text-white">{i + 1}. {c.name}</p>
+                    <code className="text-sm text-indigo-300">
                       {c.preIssueHash?.slice(0, 16)}...
                     </code>
                         {aiMatch ? (
-                          <p className="text-sm mt-1">
+                          <p className="text-sm mt-1 text-white/80">
                             🧠 Kết quả AI (DB):
-                            <b>{aiMatch.status}</b> – 
+                            <b className="ml-1">{aiMatch.status}</b> – 
                             {Math.round((aiMatch.similarityScore ?? 0) * 100)}%
                           </p>
                         ) : (
-                          <p className="text-sm mt-1 text-gray-500">
+                          <p className="text-sm mt-1 text-white/50">
                             (Chưa có kết quả AI trong DB)
                           </p>
                         )}
@@ -487,16 +488,21 @@ export default function ExamResultPage({
                   </div>
                   {pdfBlob ? (
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => window.open(pdfBlob, "_blank")}>
-                        👁️ Xem
+                      <Button variant="outline" onClick={() => window.open(pdfBlob, "_blank")}> 
+                        Xem
                       </Button>
                       {aiMatch && aiMatch.status === "unique" ? (
-                        <Button
-                          className="bg-purple-600 text-white hover:bg-purple-700"
-                          onClick={async () => {
+                      <Button
+                        className="bg-purple-600 text-white hover:bg-purple-700"
+                        onClick={async () => {
                             try {
                               const name = rows.find((r) => r.examResultId === c.metadata?.examResultId)?.user.name || "UNKNOWN";
                               toast.info(`⛓️ Đang cấp chứng chỉ cho ${name}...`);
+                              const existed = rows.find((r) => r.examResultId === c.metadata?.examResultId);
+                              if (existed?.certificate?.id) {
+                                toast.warning(`${name} đã có chứng chỉ. Bỏ qua.`);
+                                return;
+                              }
                               const res = await fetch("/api/certificates/issue-final", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
@@ -520,19 +526,19 @@ export default function ExamResultPage({
                             }
                           }}
                         >
-                          ✅ Cấp
+                          Cấp
                         </Button>
                       ) : null}
                       <a
                         href={pdfBlob}
                         download={`${c.name}_certificate.pdf`}
-                        className="px-3 py-2 border rounded text-sm text-blue-600 hover:bg-blue-50"
+                        className="px-3 py-2 border border-[#3b4354] rounded text-sm text-indigo-300 hover:bg-[#232734]"
                       >
-                        ⬇️ Tải
+                        Tải
                       </a>
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-sm">Không có PDF</span>
+                    <span className="text-white/50 text-sm">Không có PDF</span>
                   )}
                 </div>
               </div>
@@ -540,11 +546,11 @@ export default function ExamResultPage({
           })}
 
           <div className="flex justify-end gap-3 mt-5">
-            <Button onClick={handleDownloadAll} className="bg-green-600 hover:bg-green-700 text-white">
-              ⬇️ Tải xuống tất cả
+            <Button onClick={handleDownloadAll} className="bg-gradient-to-r from-emerald-600 to-lime-600 text-white">
+              Tải xuống tất cả
             </Button>
-            <Button variant="outline" onClick={handleAICheck}>
-              🤖 Kiểm tra trùng lặp (AI)
+            <Button variant="outline" onClick={handleAICheck} className="border-[#3b4354] text-white hover:bg-[#232734]">
+              Kiểm tra trùng lặp (AI)
             </Button>
 
           </div>
@@ -554,49 +560,104 @@ aiResults.every((r) => r.status === "unique")
  && (
               <div className="text-center mt-5">
                 
-    <Button
-      onClick={async () => {
-        try {
-          toast.info("⛓️ Đang cấp chứng chỉ cho tất cả...");
-          const minted: Array<{ name: string; tokenId: string }> = [];
-          const failed: Array<{ name: string; reason: string }> = [];
-          for (const c of renderedList) {
-            const name = rows.find((r) => r.examResultId === c.metadata?.examResultId)?.user.name || "UNKNOWN";
-            const res = await fetch("/api/certificates/issue-final", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                examResultId: c.metadata?.examResultId,
-                issue_date: new Date().toISOString().split("T")[0],
-                certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
-                issuer_name: "UNET.edu.vn",
-                preIssueHash: c.preIssueHash,
-              }),
-            });
-            const payload = await res.json();
-            if (res.ok) {
-              minted.push({ name, tokenId: payload.tokenId });
-              toast.success(`✅ ${name}: cấp thành công (#${payload.tokenId})`);
-            } else {
-              failed.push({ name, reason: payload?.error || "ISSUE_FINAL_FAILED" });
-              toast.error(`❌ ${name}: thất bại (${payload?.error || "Lỗi"})`);
-            }
-          }
-          toast.success(`🎉 Tổng kết: thành công ${minted.length}, thất bại ${failed.length}`);
-        } catch (err) {
-          console.error(err);
-          toast.error("❌ Cấp chứng chỉ thất bại.");
-        }
-      }}
-      className="bg-purple-600 text-white hover:bg-purple-700"
-    >
-      ✅ Cấp chứng chỉ NFT (tất cả)
-    </Button>
+    <Button onClick={() => setConfirmIssueAllOpen(true)} className="bg-purple-600 text-white hover:bg-purple-700">Cấp chứng chỉ NFT (tất cả)</Button>
 
               </div>
             )}
         </div>
       )}
+      <AlertDialog open={confirmBatchOpen} onOpenChange={setConfirmBatchOpen}>
+        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận cấp chứng chỉ (batch)</AlertDialogTitle>
+            <AlertDialogDescription>Tiến hành cấp chứng chỉ cho toàn bộ phiên thi?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+          <AlertDialogAction asChild>
+              <button onClick={async () => {
+                setConfirmBatchOpen(false);
+                try {
+                  toast.info("🚀 Đang cấp chứng chỉ batch...");
+                  const hasCert = rows.filter((r) => !!r.certificate?.id).length;
+                  if (hasCert > 0) {
+                    toast.warning(`Bỏ qua ${hasCert} học viên đã có chứng chỉ trong batch.`);
+                  }
+                  const r = await fetch("/api/certificates/issue-batch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sessionId }),
+                  });
+                  const data = await r.json();
+                  if (!r.ok) {
+                    return toast.error(`❌ Batch thất bại: ${data?.error || "Lỗi"}`);
+                  }
+                  const ok = (data.minted || []).length;
+                  const fail = (data.skipped || []).length;
+                  toast.success(`🎉 Batch thành công ${ok}, thất bại ${fail}`);
+                } catch (e) {
+                  console.error(e);
+                  toast.error("❌ Batch cấp chứng chỉ lỗi");
+                }
+              }} className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700">Cấp</button>
+          </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmIssueAllOpen} onOpenChange={setConfirmIssueAllOpen}>
+        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận cấp tất cả từ danh sách render</AlertDialogTitle>
+            <AlertDialogDescription>Tiến hành cấp NFT cho tất cả chứng chỉ đã render?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <button onClick={async () => {
+                setConfirmIssueAllOpen(false);
+                try {
+                  toast.info("⛓️ Đang cấp tất cả từ danh sách render...");
+                  const minted: Array<{ name: string; tokenId: string }> = [];
+                  const failed: Array<{ name: string; reason: string }> = [];
+                  for (const c of renderedList) {
+                    const name = rows.find((r) => r.examResultId === c.metadata?.examResultId)?.user.name || "UNKNOWN";
+                    const existed = rows.find((r) => r.examResultId === c.metadata?.examResultId);
+                    if (existed?.certificate?.id) {
+                      failed.push({ name, reason: "ALREADY_HAS_CERTIFICATE" });
+                      toast.warning(`${name} đã có chứng chỉ. Bỏ qua.`);
+                      continue;
+                    }
+                    const res = await fetch("/api/certificates/issue-final", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        examResultId: c.metadata?.examResultId,
+                        issue_date: new Date().toISOString().split("T")[0],
+                        certificate_code: `BF-${new Date().getFullYear()}-${c.metadata?.examResultId}`,
+                        issuer_name: "UNET.edu.vn",
+                        preIssueHash: c.preIssueHash,
+                      }),
+                    });
+                    const payload = await res.json();
+                    if (res.ok) {
+                      minted.push({ name, tokenId: payload.tokenId });
+                      toast.success(`✅ ${name} đã cấp (#${payload.tokenId})`);
+                    } else {
+                      failed.push({ name, reason: payload?.error || "ISSUE_FINAL_FAILED" });
+                      toast.error(`❌ ${name} thất bại (${payload?.error || "Lỗi"})`);
+                    }
+                  }
+                  toast.success(`🎉 Tổng kết: thành công ${minted.length}, thất bại ${failed.length}`);
+                } catch (err) {
+                  console.error(err);
+                  toast.error("❌ Cấp chứng chỉ thất bại");
+                }
+              }} className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700">Cấp</button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

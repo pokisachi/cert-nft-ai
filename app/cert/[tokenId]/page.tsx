@@ -1,11 +1,15 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { User, BookOpen, Link as LinkIcon, Hash } from "lucide-react";
+import { getPublicClient } from "@/lib/onchain/viem";
+import { CERT_ABI } from "@/lib/onchain/mint";
 
 type CertDetailData = {
   tokenId: string;
   issuedAt: string;
+  revoked?: boolean;
+  revocation?: { txHash: string | null; at: string | null } | null;
   student: {
     name: string | null;
     email: string;
@@ -30,12 +34,35 @@ export default function CertDetailPage({
 }) {
   const { tokenId } = use(params);
   const [data, setData] = useState<CertDetailData | null>(null);
+  const [onchainOwner, setOnchainOwner] = useState<string | null>(null);
+  const [onchainStatus, setOnchainStatus] = useState<"ACTIVE" | "BURNED" | null>(null);
+  const contract = useMemo(() => (data?.blockchain?.contract || "") as `0x${string}` | "", [data]);
 
   useEffect(() => {
     fetch(`/api/certificates/${tokenId}`)
       .then((res) => res.json())
       .then((json) => setData(json.data));
   }, [tokenId]);
+
+  useEffect(() => {
+    (async () => {
+      if (!data?.tokenId || !contract || !contract.startsWith("0x")) return;
+      try {
+        const client = getPublicClient();
+        const owner = await client.readContract({
+          address: contract,
+          abi: CERT_ABI,
+          functionName: "ownerOf",
+          args: [BigInt(data.tokenId)],
+        });
+        setOnchainOwner(owner as string);
+        setOnchainStatus(owner && owner !== "0x0000000000000000000000000000000000000000" ? "ACTIVE" : "BURNED");
+      } catch {
+        setOnchainOwner(null);
+        setOnchainStatus("BURNED");
+      }
+    })();
+  }, [data, contract]);
 
   if (!data) return <p className="p-6 bg-[#111318] text-white">Đang tải...</p>;
 
@@ -98,7 +125,14 @@ const downloadCertificate = () => {
         {/* HEADER */}
         <div className="flex items-start justify-between">
           <h1 className="text-3xl font-bold">🎓 Chứng chỉ #{data.tokenId}</h1>
-          <span className="px-3 py-1 rounded-full text-xs bg-[#1c1f27] border border-[#3b4354] text-white/80">Ngày cấp: {issueDate}</span>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs bg-[#1c1f27] border border-[#3b4354] text-white/80">Ngày cấp: {issueDate}</span>
+            {data.revoked ? (
+              <span className="px-3 py-1 rounded-full text-xs bg-red-900/30 text-red-300 border border-red-700/40">ĐÃ THU HỒI</span>
+            ) : (
+              <span className="px-3 py-1 rounded-full text-xs bg-emerald-900/30 text-emerald-300 border border-emerald-700/40">HIỆU LỰC</span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[520px,1fr] gap-8 items-start">
@@ -161,14 +195,16 @@ const downloadCertificate = () => {
             {/* Buttons */}
             <button
               onClick={downloadCertificate}
-              className="w-full py-3 px-4 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700"
+              disabled={data.revoked}
+              className={`w-full py-3 px-4 rounded-md text-white font-medium ${data.revoked ? "bg-gray-600 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}`}
             >
               📄 Tải chứng chỉ (PDF)
             </button>
 
             <button
               onClick={downloadCertificate}
-              className="w-full py-3 px-4 rounded-md bg-slate-700 text-white font-medium hover:bg-slate-800"
+              disabled={data.revoked}
+              className={`w-full py-3 px-4 rounded-md text-white font-medium ${data.revoked ? "bg-gray-700 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-800"}`}
             >
               🖨️ In chứng chỉ
             </button>
@@ -177,9 +213,9 @@ const downloadCertificate = () => {
               <a
                 href={scanUrl}
                 target="_blank"
-                className="w-full py-3 px-4 text-center rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700"
+                className={`w-full py-3 px-4 text-center rounded-md text-white font-medium ${data.revoked ? "bg-red-700 hover:bg-red-800" : "bg-emerald-600 hover:bg-emerald-700"}`}
               >
-                🔍 Kiểm tra On-chain
+                {data.revoked ? "⚠️ Kiểm tra On-chain (đã thu hồi)" : "🔍 Kiểm tra On-chain"}
               </a>
             )}
           </div>
@@ -214,16 +250,15 @@ const downloadCertificate = () => {
                 <b>Contract:</b> {data.blockchain.contract}
               </p>
 
-              <p className="break-all font-mono text-sm">
-                <b>TxHash:</b> {data.blockchain.txHash || "—"}
-              </p>
+              <p className="break-all font-mono text-sm"><b>TxHash:</b> {data.blockchain.txHash || "—"}</p>
+              <p className="break-all font-mono text-sm"><b>On-chain owner:</b> {onchainOwner || "—"}</p>
+              <p className="break-all font-mono text-sm"><b>On-chain status:</b> {onchainStatus || "—"}</p>
 
-              <p className="break-all"><b>Chủ sở hữu NFT:</b> {data.student.walletAddress || "—"}</p>
 
               {scanUrl && (
                 <div className="mt-4 p-3 rounded-md bg-blue-900/20 border border-blue-500/40">
                   <p className="text-sm font-medium mb-1 text-blue-300">
-                    Kiểm tra giao dịch on-chain:
+                    {data.revoked ? "Chứng chỉ đã bị thu hồi — kiểm tra lịch sử giao dịch on-chain:" : "Kiểm tra giao dịch on-chain:"}
                   </p>
 
                   <a
@@ -236,6 +271,17 @@ const downloadCertificate = () => {
                 </div>
               )}
             </section>
+            {data.revoked && (
+              <section className="bg-red-900/20 p-5 rounded-2xl border border-red-700/40">
+                <p className="text-sm text-red-300">Chứng chỉ này đã bị thu hồi. Nội dung PDF/in ấn bị vô hiệu để tránh sử dụng sai mục đích. Chủ sở hữu vẫn có thể xem lịch sử giao dịch on-chain.</p>
+                {data.revocation?.txHash && (
+                  <p className="mt-2 text-xs text-white/70">
+                    Tx thu hồi: <span className="font-mono break-all">{data.revocation.txHash}</span>{" "}
+                    {data.revocation.at ? `• thời điểm: ${new Date(data.revocation.at).toLocaleString("vi-VN")}` : ""}
+                  </p>
+                )}
+              </section>
+            )}
 
           </div>
         </div>

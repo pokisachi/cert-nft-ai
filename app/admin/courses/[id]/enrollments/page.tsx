@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogDescription } from '@/components/ui/alert-dialog';
+import { CalendarDays } from 'lucide-react';
 
 // ============================
 // Kiểu dữ liệu
@@ -30,13 +33,28 @@ const TIME_LABELS: Record<string, string> = {
   AFTERNOON: '14h00–15h30 (Chiều)',
   EVENING_1: '17h45–19h15 (Tối 1)',
   EVENING_2: '19h30–21h00 (Tối 2)',
+  CA_1: 'Ca 1',
+  CA_2: 'Ca 2',
 };
+
+function displayTimeLabel(raw: string | undefined): string {
+  if (!raw) return '—';
+  const t = raw.trim().toUpperCase().replace(/[-\s]+/g, '_');
+  // chuẩn hóa các biến thể phổ biến
+  const aliases: Record<string, string> = {
+    EVENING1: 'EVENING_1',
+    EVENING2: 'EVENING_2',
+    CA1: 'CA_1',
+    CA2: 'CA_2',
+  };
+  const key = aliases[t] || t;
+  return TIME_LABELS[key] || '—';
+}
 
 // ============================
 // Hiển thị slot chọn
 // ============================
 function SlotList({ slots }: { slots: string[] }) {
-  const [expanded, setExpanded] = useState(false);
   if (!slots?.length) return <>—</>;
 
   const sorted = [...slots].sort((a, b) => {
@@ -45,13 +63,13 @@ function SlotList({ slots }: { slots: string[] }) {
     return DAY_ORDER.indexOf(dayA) - DAY_ORDER.indexOf(dayB);
   });
 
-  const visible = expanded ? sorted : sorted.slice(0, 1);
-
   const parseSlotLabel = (slot: string) => {
-    const [day, time] = slot.split('_');
+    const parts = slot.split('_');
+    const day = parts[0];
+    const time = parts.slice(1).join('_');
     const dayLabel = DAY_LABELS[day] || day || '—';
-    const timeLabel = TIME_LABELS[time] || '—';
-    if (typeof timeLabel === 'string' && timeLabel.includes('(')) {
+    const timeLabel = displayTimeLabel(time);
+    if (timeLabel !== '—' && timeLabel.includes('(')) {
       return `${dayLabel} ${timeLabel}`;
     }
     return `${dayLabel} (${timeLabel})`;
@@ -60,17 +78,12 @@ function SlotList({ slots }: { slots: string[] }) {
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap gap-1">
-        {visible.map((slot) => (
-          <span key={slot} className="px-2 py-1 text-xs border rounded bg-indigo-50 text-indigo-700 whitespace-nowrap">
+        {sorted.map((slot) => (
+          <span key={slot} className="px-2 py-1 text-xs border rounded bg-indigo-900/30 text-indigo-300 border-indigo-500/40 whitespace-nowrap">
             {parseSlotLabel(slot)}
           </span>
         ))}
       </div>
-      {sorted.length > 1 && (
-        <button onClick={() => setExpanded(!expanded)} className="text-xs text-indigo-600 hover:underline mt-1">
-          {expanded ? 'Thu gọn ▲' : `Xem thêm (${sorted.length - 1}) ▼`}
-        </button>
-      )}
     </div>
   );
 }
@@ -79,28 +92,20 @@ function SlotList({ slots }: { slots: string[] }) {
 // Hiển thị học viên trong lớp
 // ============================
 function StudentList({ students }: { students: any[] }) {
-  const [expanded, setExpanded] = useState(false);
   if (!students?.length) return <>Chưa có học viên</>;
 
-  // 🧠 sort theo tên + email để hiển thị ổn định
   const sorted = [...students].sort((a, b) =>
     (a.learner?.name || '').localeCompare(b.learner?.name || '')
   );
-  const visible = expanded ? sorted : sorted.slice(0, 1);
 
   return (
     <div className="space-y-0.5">
-      {visible.map((enr: any, i: number) => (
+      {sorted.map((enr: any, i: number) => (
         <div key={i} className="text-sm">
-          {enr.learner?.name || '—'} <span className="text-gray-500">({enr.learner?.email || '—'})</span>
+          {enr.learner?.name || '—'} <span className="text-white/60">({enr.learner?.email || '—'})</span>
         </div>
       ))}
-      {students.length > 1 && (
-        <button onClick={() => setExpanded(!expanded)} className="text-xs text-indigo-600 hover:underline mt-1">
-          {expanded ? '▲ Thu gọn' : `▼ Xem thêm (${students.length - 1})`}
-        </button>
-      )}
-      <div className="text-xs text-gray-500 mt-1">Tổng: {students.length} HV</div>
+      <div className="text-xs text-white/60 mt-1">Tổng: {students.length} HV</div>
     </div>
   );
 }
@@ -119,6 +124,10 @@ export default function CourseEnrollmentsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [schedulePreview, setSchedulePreview] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [runMeta, setRunMeta] = useState<{ totalClasses: number; totalEnrollments: number; generatedAt: string } | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmRunOpen, setConfirmRunOpen] = useState(false);
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
 
   // 🔹 Lấy tên khóa học
   useEffect(() => {
@@ -167,7 +176,6 @@ export default function CourseEnrollmentsPage() {
  // 🧠 Gọi AI Scheduler - ✅ FIXED
 const handleRunScheduler = async () => {
   if (!id) return;
-  if (!confirm(`Chạy AI Scheduler cho khóa "${courseTitle}"?`)) return;
   
   setLoading(true);
   
@@ -179,7 +187,7 @@ const handleRunScheduler = async () => {
     });
     
     const result = await res.json();
-    
+
     // ✅ DEBUG: Log để kiểm tra
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📥 API Response:', result);
@@ -191,18 +199,21 @@ const handleRunScheduler = async () => {
     if (result.success) {
       // ✅ FIXED: Chỉ lưu result.data vào state
       setSchedulePreview(result.data);
-      
+      setRunMeta(result.meta ?? null);
+      toast.success(result.message || 'Đã tạo lịch học thành công');
+      setPreviewOpen(true);
+
       console.log('✅ Đã lưu vào state:');
       console.log('   Classes:', result.data.scheduledClasses?.length);
       console.log('   Enrollments:', result.data.scheduledEnrollments?.length);
     } else {
-      alert(result.error || 'Lỗi khi tạo lịch');
+      toast.error(result.error || 'Lỗi khi tạo lịch');
       console.error('❌ API Error:', result.error);
     }
     
   } catch (error) {
     console.error('❌ Exception:', error);
-    alert('Lỗi khi gọi API scheduler');
+    toast.error('Lỗi khi gọi API scheduler');
   } finally {
     setLoading(false);
   }
@@ -212,7 +223,6 @@ const handleRunScheduler = async () => {
   // 💾 Xác nhận lưu
   const handleConfirmSchedule = async () => {
     if (!schedulePreview) return;
-    if (!confirm('Xác nhận lưu lịch học này vào CSDL?')) return;
     setSaving(true);
     const res = await fetch('/api/admin/scheduler/confirm', {
       method: 'POST',
@@ -221,7 +231,7 @@ const handleRunScheduler = async () => {
     });
     const data = await res.json();
     setSaving(false);
-    alert(data.message || 'Đã lưu lịch thành công!');
+    toast.success(data.message || 'Đã lưu lịch thành công!');
   };
 
   const enrollmentLookup = useMemo(() => {
@@ -348,109 +358,161 @@ const handleRunScheduler = async () => {
   // JSX render
   // ============================
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-6 bg-[#111318] text-white">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
-          Ghi danh khóa học: <span className="text-indigo-700">{courseTitle}</span>
+          Ghi danh khóa học: <span className="text-white">{courseTitle}</span>
         </h1>
         <div className="flex gap-3">
-          <button onClick={handleRunScheduler} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            🧠 Tạo lịch tự động
+          <button onClick={() => setConfirmRunOpen(true)} disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            Tạo lịch tự động
           </button>
-          {schedulePreview && (
-            <button onClick={handleConfirmSchedule} disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-              💾 Xác nhận lưu lịch
-            </button>
-          )}
         </div>
       </div>
 
-     {/* 🧠 Kết quả AI Scheduler */}
-{schedulePreview && (
-  <div className="border rounded bg-gray-50 p-4">
-    <h2 className="text-lg font-medium mb-2">📋 Kết quả đề xuất:</h2>
-    <table className="min-w-full text-sm border">
-      <thead className="bg-gray-200">
-        <tr>
-          <th className="p-2 border">Lịch học (3 buổi/tuần)</th>
-          <th className="p-2 border">Giáo viên</th>
-          <th className="p-2 border">Phòng</th>
-          <th className="p-2 border">Bắt đầu</th>
-          <th className="p-2 border">Kết thúc</th>
-          <th className="p-2 border">Học viên</th>
-        </tr>
-      </thead>
-      <tbody>
-        {groupedSchedules.length > 0 ? (
-          groupedSchedules.map((group: any, idx: number) => (
-            <tr key={idx} className="border-t align-top">
-              <td className="p-2 border align-top">
-                <div className="space-y-1 text-sm">
-                  <div className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">
-                    {group.slots.length} buổi / tuần
+      <AlertDialog open={confirmRunOpen} onOpenChange={setConfirmRunOpen}>
+        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chạy AI Scheduler</AlertDialogTitle>
+            <AlertDialogDescription>Khóa "{courseTitle}". Tiếp tục chạy?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <button
+                onClick={() => {
+                  setConfirmRunOpen(false);
+                  handleRunScheduler();
+                }}
+                disabled={loading}
+                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                Chạy
+              </button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <AlertDialogContent variant="dark" className="max-w-5xl w-[96vw] max-h-[80vh] overflow-y-auto overscroll-contain scroll-dark">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-semibold">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-cyan-300">Kết quả AI Scheduler</span>
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          {runMeta && (
+            <div className="mt-1 mb-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{runMeta.totalClasses} lớp</span>
+              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{runMeta.totalEnrollments} ghi danh</span>
+              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{new Date(runMeta.generatedAt).toLocaleString()}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+              {groupedSchedules.length > 0 ? (
+                groupedSchedules.map((group: any, idx: number) => (
+                  <div key={idx} className="h-full rounded-xl border border-[#3b4354] bg-[#12151b] p-4 space-y-3 flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-indigo-600/20 ring-1 ring-indigo-500/40 flex items-center justify-center text-indigo-300">
+                          {(group.teacherName || group.teacherId || '?').toString().slice(0,1).toUpperCase()}
+                        </div>
+                        <div className="font-semibold text-white">{group.teacherName || group.teacherId}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/70">Phòng {group.roomId}</div>
+                    <div className="text-xs text-white/70">
+                      {group.startDate} → {group.endDate}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.slots.map((slot: any) => {
+                        const key = `${slot.dayOfWeek}_${slot.timeSlot}`;
+                        const dayLabel = DAY_LABELS[slot.dayOfWeek] || slot.dayOfWeek || '—';
+                        const timeLabel = TIME_LABELS[slot.timeSlot] || slot.timeSlot || '—';
+                        return (
+                          <span key={key} className="px-2 py-0.5 text-xs rounded border border-[#3b4354] bg-[#232734] text-white/80">
+                            {dayLabel} — {timeLabel}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-auto">
+                      <StudentList students={group.students} />
+                    </div>
                   </div>
-                  <ul className="space-y-1">
-                    {group.slots.map((slot: any) => {
-                      const key = `${slot.dayOfWeek}_${slot.timeSlot}`;
-                      const dayLabel = DAY_LABELS[slot.dayOfWeek] || slot.dayOfWeek || '—';
-                      const timeLabel = TIME_LABELS[slot.timeSlot] || slot.timeSlot || '—';
-                      return (
-                        <li key={key} className="flex items-start gap-2 text-sm">
-                          <span className="text-indigo-500">•</span>
-                          <span>{dayLabel} — {timeLabel}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </td>
-              <td className="p-2 border">{group.teacherName || group.teacherId}</td>
-              <td className="p-2 border">{group.roomId}</td>
-              <td className="p-2 border">{group.startDate}</td>
-              <td className="p-2 border">{group.endDate}</td>
-              <td className="p-2 border align-top">
-                <StudentList students={group.students} />
-              </td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan={6} className="p-3 text-center text-gray-500">
-              Chưa có đề xuất lịch hợp lệ.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-)}
+                ))
+              ) : (
+                <div className="text-center text-white/70 py-6 col-span-3">Chưa có đề xuất lịch hợp lệ.</div>
+              )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Đóng</AlertDialogCancel>
+            {schedulePreview && (
+              <button onClick={() => setConfirmSaveOpen(true)} disabled={saving} className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Xác nhận lưu lịch</button>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSaveOpen} onOpenChange={setConfirmSaveOpen}>
+        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận lưu lịch</AlertDialogTitle>
+            <AlertDialogDescription>Lưu kết quả AI Scheduler vào CSDL?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <button
+                onClick={() => {
+                  setConfirmSaveOpen(false);
+                  handleConfirmSchedule();
+                }}
+                disabled={saving}
+                className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Lưu
+              </button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       {/* 📄 Danh sách ghi danh */}
-      <div className="border rounded overflow-x-auto">
+      <div className="border border-[#3b4354] rounded-2xl overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-[#282d39]">
             <tr>
-              <th className="text-left p-3">Họ tên</th>
-              <th className="text-left p-3">Email</th>
-              <th className="text-left p-3">Ca học đã chọn</th>
-              <th className="text-left p-3">Trạng thái</th>
-              <th className="text-left p-3">Ngày ghi danh</th>
+              <th className="text-left p-3 text-[#9da6b9]">STT</th>
+              <th className="text-left p-3 text-[#9da6b9]">Họ tên</th>
+              <th className="text-left p-3 text-[#9da6b9]">Email</th>
+              <th className="text-left p-3 text-[#9da6b9]">Ca học đã chọn</th>
+              <th className="text-left p-3 text-[#9da6b9]">Trạng thái</th>
+              <th className="text-left p-3 text-[#9da6b9]">Ngày ghi danh</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-[#1c1f27]">
             {loading ? (
               <tr><td colSpan={5} className="p-3">Đang tải...</td></tr>
             ) : err ? (
-              <tr><td colSpan={5} className="p-3 text-red-600">Lỗi: {err}</td></tr>
+              <tr><td colSpan={6} className="p-3 text-red-400">Lỗi: {err}</td></tr>
             ) : (
-              resp?.data?.map((r) => (
-                <tr key={r.enrollmentId} className="border-t">
-                  <td className="p-3">{r.learner.name ?? '—'}</td>
-                  <td className="p-3">{r.learner.email}</td>
+              resp?.data?.map((r, i) => (
+                <tr key={r.enrollmentId} className="border-t border-[#3b4354] hover:bg-[#272b33]">
+                  <td className="p-3 text-white/80">{(page - 1) * pageSize + i + 1}</td>
+                  <td className="p-3 text-white">{r.learner.name ?? '—'}</td>
+                  <td className="p-3 text-white">{r.learner.email}</td>
                   <td className="p-3"><SlotList slots={r.availableSlots} /></td>
-                  <td className="p-3">{r.status}</td>
-                  <td className="p-3">{new Date(r.createdAt).toLocaleString()}</td>
+                  <td className="p-3">
+                    <span className={`text-xs rounded px-2 py-1 border ${
+                      r.status === 'ACTIVE' ? 'bg-emerald-900/30 text-emerald-300 border-emerald-500/40' :
+                      r.status === 'COMPLETED' ? 'bg-slate-800/60 text-slate-300 border-slate-600/40' :
+                      r.status === 'CANCELED' ? 'bg-red-900/30 text-red-300 border-red-600/40' :
+                      'bg-indigo-900/30 text-indigo-300 border-indigo-500/40'
+                    }`}>{r.status}</span>
+                  </td>
+                  <td className="p-3 text-white/80">{new Date(r.createdAt).toLocaleString()}</td>
                 </tr>
               ))
             )}

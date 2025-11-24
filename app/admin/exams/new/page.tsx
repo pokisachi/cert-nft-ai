@@ -42,13 +42,13 @@ export default function NewExamSessionPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6 space-y-4">
+    <div className="max-w-xl mx-auto p-6 space-y-4 bg-[#111318] text-white">
       <h1 className="text-2xl font-semibold">Tạo kỳ thi mới</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block font-medium">Khóa học</label>
+          <label className="block font-medium text-white/80">Khóa học</label>
           <select
-            className="border rounded px-3 py-2 w-full"
+            className="border border-[#3b4354] bg-[#1c1f27] text-white rounded px-3 py-2 w-full"
             onChange={(e) => setCourseId(Number(e.target.value))}
           >
             <option value="">-- Chọn khóa học --</option>
@@ -61,9 +61,9 @@ export default function NewExamSessionPage() {
         </div>
 
         <div>
-          <label className="block font-medium">Phòng thi</label>
+          <label className="block font-medium text-white/80">Phòng thi</label>
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="border border-[#3b4354] bg-[#1c1f27] text-white rounded px-3 py-2 w-full"
             placeholder="VD: Phòng A1"
             value={room}
             onChange={(e) => setRoom(e.target.value)}
@@ -71,28 +71,28 @@ export default function NewExamSessionPage() {
         </div>
 
         <div>
-          <label className="block font-medium">Ngày & giờ thi</label>
+          <label className="block font-medium text-white/80">Ngày & giờ thi</label>
           <input
             type="datetime-local"
-            className="border rounded px-3 py-2 w-full"
+            className="border border-[#3b4354] bg-[#1c1f27] text-white rounded px-3 py-2 w-full"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
 
         <div>
-          <label className="block font-medium">Sức chứa</label>
+          <label className="block font-medium text-white/80">Sức chứa</label>
           <input
             type="number"
             min={1}
-            className="border rounded px-3 py-2 w-full"
+            className="border border-[#3b4354] bg-[#1c1f27] text-white rounded px-3 py-2 w-full"
             value={capacity}
             onChange={(e) => setCapacity(Number(e.target.value))}
           />
         </div>
 
-        <Button type="submit" className="w-full">
-          ➕ Tạo kỳ thi
+        <Button type="submit" className="w-full bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">
+          Tạo kỳ thi
         </Button>
       </form>
     </div>

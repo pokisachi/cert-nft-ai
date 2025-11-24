@@ -58,9 +58,30 @@ export async function GET(req: Request) {
     prisma.certificate.count({ where }),
   ]);
 
+  const certIds = items.map((c) => c.id.toString());
+  const audits = await prisma.auditLog.findMany({
+    where: {
+      entity: "Certificate",
+      entityId: { in: certIds },
+      action: { in: ["CERTIFICATE_REVOKED", "CERTIFICATE_BURNED"] },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const latestByCert = new Map<string, { tx?: string | null; at?: string | null }>();
+  for (const a of audits) {
+    const k = a.entityId;
+    if (!latestByCert.has(k)) {
+      const tx = (a.payload as any)?.revokeTxHash || null;
+      latestByCert.set(k, { tx, at: a.createdAt?.toISOString?.() || null });
+    }
+  }
+
   const result = items.map((c) => ({
     ...c,
     verifyUrl: `https://verify.example.com/cert/${c.tokenId}`,
+    revocationTxHash: latestByCert.get(c.id.toString())?.tx || null,
+    revocationAt: latestByCert.get(c.id.toString())?.at || null,
   }));
 
   return NextResponse.json({

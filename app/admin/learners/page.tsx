@@ -54,15 +54,15 @@ export default function LearnersPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 text-gray-600 animate-pulse">
+      <div className="p-6 bg-[#111318] text-white/70 animate-pulse">
         Đang tải danh sách học viên...
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Quản lý học viên</h1>
+    <div className="p-6 bg-[#111318] text-white">
+      <h1 className="text-2xl font-semibold mb-4">Quản lý học viên</h1>
 
       {/* 🔍 Thanh tìm kiếm */}
       <div className="flex gap-2 mb-4">
@@ -73,22 +73,24 @@ export default function LearnersPage() {
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSearch();
           }}
+          className="border border-[#3b4354] bg-[#12151b] text-white"
         />
-        <Button onClick={handleSearch}>Tìm</Button>
+        <Button onClick={handleSearch} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">Tìm</Button>
       </div>
 
       {/* 🧩 Bảng danh sách học viên */}
-      <Table className="min-w-full border text-sm">
+      <div className="border border-[#3b4354] rounded-2xl overflow-x-auto">
+      <Table className="min-w-full text-sm bg-[#1c1f27] text-white" variant="dark">
         {/* ✅ Header đúng chuẩn HTML */}
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Họ tên</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Điện thoại</TableHead>
-            <TableHead>Địa chỉ cấp chứng chỉ</TableHead>
-            <TableHead>Ngày tạo</TableHead>
-            <TableHead>Hành động</TableHead>
+        <TableHeader variant="dark">
+          <TableRow variant="dark">
+            <TableHead variant="dark">ID</TableHead>
+            <TableHead variant="dark">Họ tên</TableHead>
+            <TableHead variant="dark">Email</TableHead>
+            <TableHead variant="dark">Điện thoại</TableHead>
+            <TableHead variant="dark">Địa chỉ cấp chứng chỉ</TableHead>
+            <TableHead variant="dark">Ngày tạo</TableHead>
+            <TableHead variant="dark">Hành động</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -96,14 +98,14 @@ export default function LearnersPage() {
         <TableBody>
           {data?.items?.length ? (
             data.items.map((u) => (
-              <TableRow key={u.id}>
+              <TableRow key={u.id} variant="dark" className="hover:bg-[#272b33]">
                 <TableCell>{u.id}</TableCell>
                 <TableCell>{u.name || "-"}</TableCell>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.phone || "-"}</TableCell>
                 <TableCell>
                   {u.walletAddress ? (
-                    <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                    <code className="bg-[#1c1f27] border border-[#3b4354] text-white px-2 py-1 rounded text-xs">
                       {u.walletAddress}
                     </code>
                   ) : (
@@ -115,7 +117,7 @@ export default function LearnersPage() {
                 </TableCell>
                 <TableCell className="flex gap-2">
                   <Link href={`/admin/learners/${u.id}`}>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" className="border-[#3b4354] text-white hover:bg-[#232734]">
                       Xem
                     </Button>
                   </Link>
@@ -143,17 +145,18 @@ export default function LearnersPage() {
               </TableRow>
             ))
           ) : (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-gray-500">
+            <TableRow variant="dark">
+              <TableCell colSpan={7} className="text-center text-white/70">
                 Không có học viên nào
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+      </div>
 
       {/* 📄 Phân trang */}
-      <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+      <div className="flex items-center justify-between mt-4 text-sm text-white/70">
         <span>
           Trang {page} /{" "}
           {Math.ceil((data?.total || 0) / (data?.size || 10)) || 1}
@@ -164,6 +167,7 @@ export default function LearnersPage() {
             variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="border-[#3b4354] text-white hover:bg-[#232734]"
           >
             Trước
           </Button>
@@ -172,6 +176,7 @@ export default function LearnersPage() {
             variant="outline"
             disabled={data && page >= Math.ceil(data.total / data.size)}
             onClick={() => setPage((p) => p + 1)}
+            className="border-[#3b4354] text-white hover:bg-[#232734]"
           >
             Sau
           </Button>

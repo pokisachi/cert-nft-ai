@@ -1,6 +1,7 @@
 // app/api/certificates/[tokenId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function GET(
   _req: NextRequest,
@@ -27,10 +28,20 @@ export async function GET(
     // PDF Pinata vẫn giữ, nhưng chút nữa ta sẽ bỏ dùng ở UI
     const pdfUrl = `https://gateway.pinata.cloud/ipfs/${cert.ipfsCid}`;
 
+    const audit = await prisma.auditLog.findFirst({
+      where: {
+        entity: "Certificate",
+        entityId: cert.id.toString(),
+        action: { in: ["CERTIFICATE_REVOKED", "CERTIFICATE_BURNED"] },
+      },
+      orderBy: { createdAt: "desc" },
+    } as Prisma.AuditLogFindFirstArgs);
+
     return NextResponse.json({
       data: {
         tokenId: cert.tokenId,
         issuedAt: cert.issuedAt.toISOString(),
+        revoked: Boolean(cert.revoked),
         student: {
           name: cert.user.name,
           email: cert.user.email,
@@ -47,6 +58,12 @@ export async function GET(
           txHash: cert.txHash,
           owner: cert.user.walletAddress ?? null,
         },
+        revocation: audit
+          ? {
+              txHash: (audit.payload as any)?.revokeTxHash || null,
+              at: audit.createdAt?.toISOString?.() || null,
+            }
+          : null,
         files: {
           pdf: pdfUrl,   // vẫn trả về, nhưng UI sẽ không dùng nữa nếu bạn muốn
         },

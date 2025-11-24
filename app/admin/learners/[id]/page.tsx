@@ -75,8 +75,8 @@ export default function LearnerDetailPage() {
     },
   });
 
-  if (isLoading) return <p className="p-6 text-gray-500 text-center">Đang tải...</p>;
-  if (!data) return <p className="p-6 text-gray-500 text-center">Không tìm thấy học viên.</p>;
+  if (isLoading) return <p className="p-6 bg-[#111318] text-white text-center">Đang tải...</p>;
+  if (!data) return <p className="p-6 bg-[#111318] text-white text-center">Không tìm thấy học viên.</p>;
 
   const isSaving =
     (mutation as any).isPending ||
@@ -117,11 +117,11 @@ export default function LearnerDetailPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex justify-center items-start p-6 bg-gray-50">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow p-8">
+    <div className="min-h-screen flex justify-center items-start p-6 bg-[#111318] text-white">
+      <div className="w-full max-w-2xl bg-[#1c1f27] border border-[#3b4354] rounded-2xl p-8 shadow-sm">
         <h2 className="text-2xl font-semibold mb-6 text-center">Thông tin học viên</h2>
 
-        <div className="space-y-3 mb-6 text-sm text-gray-700">
+        <div className="space-y-3 mb-6 text-sm text-white/80">
           <p>
             <strong>Email:</strong> {data.email}
           </p>
@@ -129,15 +129,15 @@ export default function LearnerDetailPage() {
             <strong>Địa chỉ ví:</strong>{" "}
             {data.walletAddress ? (
               <>
-                <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="bg-[#12151b] border border-[#3b4354] text-white px-2 py-1 rounded text-xs">
                   {data.walletAddress}
                 </code>
-                <Button size="sm" variant="outline" onClick={copyWallet} className="ml-2">
-                  {copied ? "✓ Đã copy" : "Copy"}
+                <Button size="sm" variant="outline" onClick={copyWallet} className="ml-2 border-[#3b4354] text-white hover:bg-[#232734]">
+                  {copied ? "Đã copy" : "Copy"}
                 </Button>
               </>
             ) : (
-              <span className="italic text-gray-400">Chưa liên kết</span>
+              <span className="italic text-white/50">Chưa liên kết</span>
             )}
           </p>
           <p>
@@ -148,7 +148,6 @@ export default function LearnerDetailPage() {
           </p>
         </div>
 
-        {/* 🧩 Form cập nhật thông tin */}
         <form
           onSubmit={form.handleSubmit((values) =>
             mutation.mutate(values as LearnerUpdatePayload)
@@ -156,27 +155,27 @@ export default function LearnerDetailPage() {
           className="space-y-5"
         >
           <div>
-            <label className="block text-sm font-medium mb-1">Họ tên</label>
-            <Input {...form.register("name")} placeholder="Nhập họ tên" />
+            <label className="block text-sm font-medium mb-1 text-white/80">Họ tên</label>
+            <Input {...form.register("name")} placeholder="Nhập họ tên" className="border border-[#3b4354] bg-[#12151b] text-white" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Số điện thoại</label>
-            <Input {...form.register("phone")} placeholder="Nhập số điện thoại" />
+            <label className="block text-sm font-medium mb-1 text-white/80">Số điện thoại</label>
+            <Input {...form.register("phone")} placeholder="Nhập số điện thoại" className="border border-[#3b4354] bg-[#12151b] text-white" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Địa chỉ</label>
-            <Input {...form.register("address")} placeholder="Nhập địa chỉ" />
+            <label className="block text-sm font-medium mb-1 text-white/80">Địa chỉ</label>
+            <Input {...form.register("address")} placeholder="Nhập địa chỉ" className="border border-[#3b4354] bg-[#12151b] text-white" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Ảnh đại diện</label>
+            <label className="block text-sm font-medium mb-1 text-white/80">Ảnh đại diện</label>
             <input
               type="file"
               accept="image/*"
               onChange={handleUpload}
-              className="block w-full text-sm text-gray-600"
+              className="block w-full text-sm rounded border border-[#3b4354] bg-[#12151b] text-white file:mr-4 file:rounded file:border-0 file:bg-[#232734] file:text-white hover:file:bg-[#2b3040]"
             />
             {(preview || form.watch("avatarUrl")) && (
               <div className="mt-3 flex flex-col items-center">
@@ -185,16 +184,16 @@ export default function LearnerDetailPage() {
                   alt="Avatar"
                   width={80}
                   height={80}
-                  className="rounded-full border"
+                  className="rounded-full border border-[#3b4354]"
                 />
-                <span className="text-xs text-gray-500 mt-1">Ảnh hiện tại</span>
+                <span className="text-xs text-white/50 mt-1">Ảnh hiện tại</span>
               </div>
             )}
           </div>
 
           <div className="flex justify-center">
-            <Button type="submit" disabled={isSaving} className="px-6">
-              {isSaving ? "Đang lưu..." : "💾 Lưu thay đổi"}
+            <Button type="submit" disabled={isSaving} className="px-6 bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">
+              {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
             </Button>
           </div>
         </form>

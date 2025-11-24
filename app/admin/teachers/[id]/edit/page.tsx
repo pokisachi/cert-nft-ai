@@ -89,14 +89,15 @@ export default function EditTeacherPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto mt-8">
-      <h1 className="text-2xl font-semibold mb-6">✏️ Sửa Giảng viên</h1>
+    <main className="max-w-5xl mx-auto mt-8 p-6 bg-[#111318] text-white">
+      <h1 className="text-2xl font-semibold mb-6">Sửa Giảng viên</h1>
 
-      <Card className="p-6 space-y-4">
+      <Card variant="dark" className="p-6 space-y-4 border-[#3b4354]">
         <Input
           placeholder="Tên giảng viên"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          className="border border-[#3b4354] bg-[#12151b] text-white"
         />
 
         <div>
@@ -110,8 +111,8 @@ export default function EditTeacherPage() {
                   onClick={() => toggleQualification(q.id)}
                   className={`cursor-pointer ${
                     active
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                      : "bg-[#1c1f27] text-[#9da6b9] border border-[#3b4354] hover:bg-[#272b33]"
                   }`}
                 >
                   {q.name} ({q.category})
@@ -123,22 +124,22 @@ export default function EditTeacherPage() {
 
         <div>
           <p className="text-sm font-medium mb-2">Chọn lịch rảnh:</p>
-          <div className="overflow-x-auto rounded border">
-            <table className="min-w-full divide-y divide-gray-200 text-center">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded border border-[#3b4354]">
+            <table className="min-w-full text-center">
+              <thead className="bg-[#282d39]">
                 <tr>
-                  <th className="p-2 text-xs uppercase text-gray-500">Ca học</th>
+                  <th className="p-2 text-xs uppercase text-[#9da6b9]">Ca học</th>
                   {DAYS.map((day) => (
-                    <th key={day.value} className="p-2 text-xs uppercase text-gray-500">
+                    <th key={day.value} className="p-2 text-xs uppercase text-[#9da6b9]">
                       {day.label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-[#1c1f27] divide-y divide-[#3b4354]">
                 {TIME_SLOTS.map((slot) => (
                   <tr key={slot.value}>
-                    <td className="p-2 font-semibold">{slot.label}</td>
+                    <td className="p-2 font-semibold text-white">{slot.label}</td>
                     {DAYS.map((day) => {
                       const id = `${day.value}_${slot.value}`;
                       const active = selectedSlots.includes(id);
@@ -146,10 +147,10 @@ export default function EditTeacherPage() {
                         <td
                           key={id}
                           onClick={() => toggleSlot(id)}
-                          className={`cursor-pointer p-2 transition ${
+                          className={`cursor-pointer p-2 transition text-lg font-semibold ${
                             active
-                              ? "bg-indigo-600 text-white"
-                              : "hover:bg-indigo-100 text-gray-600"
+                              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                              : "bg-[#1c1f27] text-[#9da6b9] hover:bg-[#272b33]"
                           }`}
                         >
                           {active ? "✓" : ""}
@@ -161,9 +162,27 @@ export default function EditTeacherPage() {
               </tbody>
             </table>
           </div>
+          {/* preview chips lựa chọn */}
+          {selectedSlots.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedSlots.map((code) => {
+                const dayMap: Record<string, string> = { Mon: "T2", Tue: "T3", Wed: "T4", Thu: "T5", Fri: "T6", Sat: "T7", Sun: "CN" };
+                const slotMap: Record<string, string> = { EVENING_1: "17:45–19:15", EVENING_2: "19:30–21:00" };
+                const parts = code.split("_");
+                const day = parts[0];
+                const slotId = parts.length >= 3 ? `${parts[1]}_${parts[2]}` : parts[1] || "";
+                const label = `${dayMap[day] || day} • ${slotMap[slotId] || slotId || code}`;
+                return (
+                  <span key={code} className="text-xs rounded px-2 py-0.5 bg-[#1c1f27] text-[#9da6b9] border border-[#3b4354]">
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <Button onClick={handleUpdate}>💾 Lưu thay đổi</Button>
+        <Button onClick={handleUpdate} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">Lưu thay đổi</Button>
       </Card>
     </main>
   );
