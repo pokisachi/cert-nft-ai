@@ -18,6 +18,23 @@ import { Users, BookOpen, FileText, BadgeCheck, Home } from 'lucide-react';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title, PointElement, LineElement, Filler);
 
+const shadowPlugin = {
+  id: 'shadowPlugin',
+  beforeDatasetsDraw(chart: any, _args: any, opts: any) {
+    const c = chart.ctx;
+    c.save();
+    c.shadowColor = (opts && opts.color) || 'rgba(157,166,185,0.35)';
+    c.shadowBlur = (opts && opts.blur) || 12;
+    c.shadowOffsetX = 0;
+    c.shadowOffsetY = 0;
+  },
+  afterDatasetsDraw(chart: any) {
+    chart.ctx.restore();
+  },
+};
+
+ChartJS.register(shadowPlugin as any);
+
 type DashboardStats = {
   learners: number;
   courses: number;
@@ -84,8 +101,10 @@ export default function AdminDashboard() {
           {
             label,
             data: dataset,
-            backgroundColor: '#2c3240',
-            hoverBackgroundColor: '#3a4150',
+            backgroundColor: color || 'rgba(99,102,241,0.6)',
+            hoverBackgroundColor: color || 'rgba(99,102,241,0.8)',
+            borderColor: '#3b4354',
+            borderWidth: 1,
             borderRadius: 8,
           },
         ],
@@ -109,6 +128,16 @@ export default function AdminDashboard() {
     const dataset = labels.map((k) => values[k]);
     const useLabels = [''].concat(labels);
     const useDataset = [0].concat(dataset);
+
+    const bg = (ctx: any) => {
+      const chart = ctx.chart;
+      const { ctx: c, chartArea } = chart;
+      if (!chartArea) return 'rgba(40,45,57,0.3)';
+      const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+      g.addColorStop(0, 'rgba(40,45,57,0.35)');
+      g.addColorStop(1, 'rgba(40,45,57,0)');
+      return g;
+    };
     return {
       data: {
         labels: useLabels,
@@ -117,17 +146,26 @@ export default function AdminDashboard() {
             label,
             data: useDataset,
             borderColor: color || '#9da6b9',
-            backgroundColor: 'rgba(40,45,57,0.5)',
+            backgroundColor: bg,
+            borderWidth: 3,
+            borderCapStyle: 'round',
+            borderJoinStyle: 'round',
             fill: 'origin',
             tension: 0.4,
-            pointRadius: 0,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointHitRadius: 10,
+            pointBorderWidth: 2,
+            pointBorderColor: color || '#9da6b9',
+            pointBackgroundColor: '#111318',
             spanGaps: false,
+            clip: false,
           },
         ],
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false }, title: { display: false } },
+        plugins: { legend: { display: false }, title: { display: false }, shadowPlugin: { color: 'rgba(157,166,185,0.35)', blur: 12 } },
         scales: {
           x: { grid: { color: 'rgba(59,67,84,0.3)' }, ticks: { color: '#9da6b9' } },
           y: { beginAtZero: true, min: 0, suggestedMin: 0, grid: { color: 'rgba(59,67,84,0.3)' }, ticks: { color: '#9da6b9' } },
@@ -177,7 +215,7 @@ export default function AdminDashboard() {
           makeBarChart={makeBarChart}
           makeLineChart={makeLineChart}
           icon={<BookOpen className="h-4 w-4" />}
-          variant="bar"
+          variant="line"
         />
         <ChartCard
           title="Kỳ thi được mở"
@@ -189,7 +227,7 @@ export default function AdminDashboard() {
           makeBarChart={makeBarChart}
           makeLineChart={makeLineChart}
           icon={<FileText className="h-4 w-4" />}
-          variant="bar"
+          variant="line"
         />
         <ChartCard
           title="Chứng chỉ được cấp"
