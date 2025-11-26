@@ -19,13 +19,21 @@ export default function CertificateCheck({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [matched, setMatched] = useState<string[]>([]);
+  const [metrics, setMetrics] = useState<null | {
+    f1_score: number;
+    precision: number;
+    recall: number;
+    accuracy: number;
+    confusion_matrix: { TP: number; FP: number; FN: number; TN: number };
+  }>(null);
+  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
 
   const handleCheckDuplicate = async () => {
     setLoading(true);
     setResult(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/certificates/ai-dedup-check', {
+      const res = await fetch('http://localhost:8001/api/admin/certificates/ai-dedup-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,6 +59,22 @@ export default function CertificateCheck({
         const matches = data.results?.[0]?.matchedWith || [];
         setResult(status);
         setMatched(matches);
+
+        try {
+          const evalRes = await fetch('http://localhost:8001/api/evaluate/dedup', { method: 'POST' });
+          const evalData = await evalRes.json().catch(() => ({}));
+          if (evalRes.ok && evalData?.evaluation_metrics) {
+            setMetrics(evalData.evaluation_metrics);
+            const url = evalData?.heatmap_url || null;
+            setHeatmapUrl(url ? (String(url).startsWith('http') ? url : `http://localhost:8001${url}`) : null);
+          } else {
+            setMetrics(null);
+            setHeatmapUrl(null);
+          }
+        } catch {
+          setMetrics(null);
+          setHeatmapUrl(null);
+        }
       } else {
         setResult('error');
       }
@@ -104,6 +128,26 @@ export default function CertificateCheck({
       {result === 'error' && (
         <div className="p-3 border rounded bg-red-50 text-red-800">
           ❌ Lỗi khi kiểm tra. Vui lòng thử lại.
+        </div>
+      )}
+
+      {metrics && (
+        <div className="p-3 border rounded bg-slate-50 text-slate-800">
+          <p className="font-medium">Đánh giá thuật toán (mô phỏng)</p>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+            <div>Điểm F1: <b>{metrics.f1_score}%</b></div>
+            <div>Độ chính xác (Precision): <b>{metrics.precision}%</b></div>
+            <div>Độ bao phủ (Recall): <b>{metrics.recall}%</b></div>
+            <div>Độ đúng (Accuracy): <b>{metrics.accuracy}%</b></div>
+          </div>
+          <div className="mt-2 text-sm">
+            Ma trận nhầm lẫn — Đúng trùng (TP): {metrics.confusion_matrix.TP}, Báo trùng nhầm (FP): {metrics.confusion_matrix.FP}, Bỏ sót trùng (FN): {metrics.confusion_matrix.FN}, Đúng không trùng (TN): {metrics.confusion_matrix.TN}
+          </div>
+          {heatmapUrl && (
+            <div className="mt-3">
+              <img src={heatmapUrl} alt="Ma trận nhầm lẫn" className="max-w-full h-auto border rounded" />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -53,3 +53,5 @@ class ScheduleResult(BaseModel):
     """Kết quả xếp lịch"""
     scheduledClasses: List[ScheduledClass]
     scheduledEnrollments: List[ScheduledEnrollment]
+    convergenceChartBase64: Optional[str] = None
+    diagnostics: Optional[dict] = None

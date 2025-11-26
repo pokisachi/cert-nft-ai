@@ -43,14 +43,21 @@ def optimize_schedule(
     """
     Tối ưu hóa lịch học cho một khóa học
     """
-    result = genetic_algorithm(
-        course=payload.course,
-        teachers=payload.teachers,
-        rooms=payload.rooms,
-        enrollments=payload.enrollments
-    )
-    
-    return result
+    try:
+        result = genetic_algorithm(
+            course=payload.course,
+            teachers=payload.teachers,
+            rooms=payload.rooms,
+            enrollments=payload.enrollments,
+        )
+        return result
+    except Exception as e:
+        logging.exception("Optimize failed: %s", e)
+        return ScheduleResult(
+            scheduledClasses=[],
+            scheduledEnrollments=[],
+            convergenceChartBase64=None,
+        )
 
 if __name__ == "__main__":
     import uvicorn

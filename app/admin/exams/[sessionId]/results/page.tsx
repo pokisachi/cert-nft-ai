@@ -29,6 +29,13 @@ type AIResult = {
   certId?: string;
 };
 
+type EvalMetrics = {
+  f1_score: number;
+  precision: number;
+  recall: number;
+  accuracy: number;
+  confusion_matrix: { TP: number; FP: number; FN: number; TN: number };
+};
 
 export default function ExamResultPage({
   params,
@@ -44,6 +51,8 @@ export default function ExamResultPage({
   const [aiChecked, setAIChecked] = useState(false);
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [confirmIssueAllOpen, setConfirmIssueAllOpen] = useState(false);
+  const [evalMetrics, setEvalMetrics] = useState<EvalMetrics | null>(null);
+  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
 
   // 🔹 Load dữ liệu ca thi
   useEffect(() => {
@@ -290,6 +299,22 @@ export default function ExamResultPage({
       toast.success(`✅ AI xử lý ${results.length} chứng chỉ (Unique: ${uniqueCount}, Duplicate: ${dupCount}, Suspected: ${suspectCount})`);
       if (dupCount > 0 || suspectCount > 0) {
         toast.warning("⚠️ Có chứng chỉ nghi trùng hoặc trùng lặp. Vui lòng kiểm tra.");
+      }
+
+      try {
+        const evalRes = await fetch("http://localhost:8001/api/evaluate/dedup", { method: "POST" });
+        const evalJson = await evalRes.json().catch(() => ({}));
+        if (evalRes.ok && evalJson?.evaluation_metrics) {
+          setEvalMetrics(evalJson.evaluation_metrics as EvalMetrics);
+          const url = evalJson?.heatmap_url || null;
+          setHeatmapUrl(url ? (String(url).startsWith('http') ? url : `http://localhost:8001${url}`) : null);
+        } else {
+          setEvalMetrics(null);
+          setHeatmapUrl(null);
+        }
+      } catch {
+        setEvalMetrics(null);
+        setHeatmapUrl(null);
       }
 
     } catch (err) {
@@ -554,6 +579,26 @@ export default function ExamResultPage({
             </Button>
 
           </div>
+
+          {evalMetrics && (
+            <div className="mt-6 p-4 bg-[#12151b] border border-[#3b4354] rounded">
+              <h3 className="font-semibold mb-2 text-white">🧪 Đánh giá thuật toán (mô phỏng)</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-white/90">
+                <div>Điểm F1: <b>{evalMetrics.f1_score}%</b></div>
+                <div>Độ chính xác (Precision): <b>{evalMetrics.precision}%</b></div>
+                <div>Độ bao phủ (Recall): <b>{evalMetrics.recall}%</b></div>
+                <div>Độ đúng (Accuracy): <b>{evalMetrics.accuracy}%</b></div>
+              </div>
+              <div className="mt-2 text-sm text-white/80">
+                Ma trận nhầm lẫn — Đúng trùng (TP): {evalMetrics.confusion_matrix.TP}, Báo trùng nhầm (FP): {evalMetrics.confusion_matrix.FP}, Bỏ sót trùng (FN): {evalMetrics.confusion_matrix.FN}, Đúng không trùng (TN): {evalMetrics.confusion_matrix.TN}
+              </div>
+              {heatmapUrl && (
+                <div className="mt-3">
+                  <img src={heatmapUrl} alt="Ma trận nhầm lẫn" className="max-w-full h-auto border rounded" />
+                </div>
+              )}
+            </div>
+          )}
 
           {aiResults.length > 0 &&
 aiResults.every((r) => r.status === "unique")

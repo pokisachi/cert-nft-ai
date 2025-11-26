@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 export default function AnnouncementsPage() {
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError, refetch, markRead } = useMyAnnouncements(10);
+  const { data, isLoading, isError, refetch, markRead, markAllRead } = useMyAnnouncements(10);
 
   if (isLoading) return <Skeleton className="h-32 w-full" />;
   if (isError)
@@ -31,12 +31,30 @@ export default function AnnouncementsPage() {
   return (
     <main className="px-6 py-6 bg-[#111318] min-h-[calc(100vh-64px)]">
       <div className="max-w-3xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-white">Tất cả thông báo</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Tất cả thông báo</h1>
+          <Button
+            variant="outline"
+            className="border-[#3b4354] text-white"
+            disabled={!data || data.unreadCount === 0 || markAllRead.isPending}
+            onClick={() => markAllRead.mutate()}
+            title="Đánh dấu đọc tất cả"
+          >
+            Đánh dấu đã đọc tất cả
+          </Button>
+        </div>
 
         {items.length ? (
           <div className="space-y-3">
             {items.map((a) => (
-              <Card key={a.id} variant="dark" className={`border-[#3b4354] transition hover:border-indigo-500/40 hover:bg-[#242833] ${!a.isRead ? 'border-indigo-500/40 bg-[#242833]' : ''}`}>
+              <Card
+                key={a.id}
+                variant="dark"
+                className={`border-[#3b4354] transition hover:border-indigo-500/40 hover:bg-[#242833] ${!a.isRead ? 'border-indigo-500/40 bg-[#242833]' : ''}`}
+                onClick={() => (!a.isRead ? markRead.mutate(a.id) : null)}
+                role="button"
+                tabIndex={0}
+              >
                 <CardHeader className="border-[#3b4354]">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-white">{a.title}</CardTitle>
@@ -49,13 +67,7 @@ export default function AnnouncementsPage() {
                     {format(new Date(a.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
                   </p>
                 </CardContent>
-                <CardFooter className="border-[#3b4354]">
-                  {!a.isRead && (
-                    <Button variant="outline" size="sm" className="border-[#3b4354] text-white" onClick={() => markRead.mutate(a.id)}>
-                      Đánh dấu đã đọc
-                    </Button>
-                  )}
-                </CardFooter>
+                {/* Footer bỏ nút riêng; click card sẽ đánh dấu đọc */}
               </Card>
             ))}
           </div>

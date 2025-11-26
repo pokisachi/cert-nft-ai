@@ -75,6 +75,46 @@ export async function POST(req: Request) {
       )
     );
 
+    const course = await prisma.course.findUnique({
+      where: { id: Number(courseId) },
+      select: { id: true, title: true },
+    });
+
+    if (course) {
+      const enrollmentIds = Array.from(
+        new Set((scheduledEnrollments || []).map((e) => Number(e.enrollmentId)))
+      ).filter((id) => !Number.isNaN(id));
+
+      if (enrollmentIds.length > 0) {
+        const enrollments = await prisma.enrollment.findMany({
+          where: { id: { in: enrollmentIds } },
+          select: { id: true, userId: true },
+        });
+
+        const notifyData = enrollments.map((enr) => ({
+          title: "Lịch học đã được xác nhận",
+          content: `Khoá ${course.title} đã có lịch học. Vào mục \"Lịch học của tôi\" để xem chi tiết.`,
+          userId: enr.userId,
+          courseId: course.id,
+          isPinned: false,
+        }));
+
+        if (notifyData.length > 0) {
+          await prisma.notification.createMany({ data: notifyData });
+        }
+      }
+
+      await prisma.notification.create({
+        data: {
+          title: "Lịch học khoá đã được xác nhận",
+          content: `Khoá ${course.title} đã được xếp lịch và lưu vào hệ thống.`,
+          targetRole: "LEARNER",
+          courseId: course.id,
+          isPinned: false,
+        },
+      });
+    }
+
     return NextResponse.json({
       message: '✅ Đã lưu lịch học vào cơ sở dữ liệu thành công.',
       count: {

@@ -26,6 +26,13 @@ class DedupService:
         threshold_duplicate = float(options.get("thresholdDuplicate", THRESH_DUPLICATE))
         topk = int(options.get("topK", TOPK))
         max_hamming = int(options.get("maxHamming", 3))
+        alpha = float(options.get("alpha", 0.6))
+        beta = float(options.get("beta", 0.4))
+        if alpha + beta <= 0:
+            alpha, beta = 0.6, 0.4
+        else:
+            s = alpha + beta
+            alpha, beta = alpha / s, beta / s
 
         for it in items:
             # 1️⃣ Decode PDF
@@ -108,8 +115,8 @@ class DedupService:
                 hd = int(row.get("hammingDist", 0))
                 simhash_score = 1.0 - float(hd) / 64.0
 
-                # ✔ Combined score
-                combined = 0.6 * mh_score + 0.4 * simhash_score
+                # ✔ Combined score (tùy chỉnh trọng số)
+                combined = alpha * mh_score + beta * simhash_score
 
                 matched.append({
                     "refDocHash": row["docHash"],

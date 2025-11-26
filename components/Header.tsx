@@ -13,6 +13,7 @@ export default function Header() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [unread, setUnread] = useState(0);
 
   // ✅ Click logo → Admin vào /admin, user thường vào /
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -31,6 +32,36 @@ export default function Header() {
     if (menuOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  useEffect(() => {
+    let timer: any;
+    const load = async () => {
+      if (!user) {
+        setUnread(0);
+        return;
+      }
+      try {
+        const url = new URL("/api/me/announcements", window.location.origin);
+        url.searchParams.set("limit", "1");
+        url.searchParams.set("offset", "0");
+        url.searchParams.set("t", String(Date.now()));
+        const r = await fetch(url.toString(), { credentials: "include", cache: "no-store", headers: { "cache-control": "no-cache" } });
+        const j = await r.json();
+        if (r.ok && typeof j.unreadCount === "number") setUnread(j.unreadCount);
+      } catch {}
+    };
+    load();
+    timer = setInterval(load, 30000);
+    const handler = (e: any) => {
+      if (e?.detail && typeof e.detail.unreadCount === 'number') setUnread(e.detail.unreadCount);
+      else load();
+    };
+    window.addEventListener('notifications:updated', handler as any);
+    return () => {
+      timer && clearInterval(timer);
+      window.removeEventListener('notifications:updated', handler as any);
+    };
+  }, [user]);
 
   return (
     <header className="border-b border-b-[#282d39] bg-[#111318] sticky top-0 z-40">
@@ -70,10 +101,11 @@ export default function Header() {
                 title="Thông báo"
               >
                 <Bell className="w-5 h-5 text-white/80 hover:text-white transition-colors" />
-                {/* Nếu bạn có API thông báo chưa đọc, bật phần badge này: */}
-                {/* <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] px-1 rounded-full">
-                  3
-                </span> */}
+                {unread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] leading-none">
+                    {unread > 9 ? "9+" : String(unread)}
+                  </span>
+                )}
               </button>
 
               {/* Avatar + Dropdown */}
@@ -139,18 +171,25 @@ export default function Header() {
                           >
                           📚 Khóa học của tôi
                           </Link>
-                          <Link
-                            href="/me/certificates"
-                            className="block px-4 py-2.5 rounded-md hover:bg-[#282d39] text-white transition-colors"
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            🎓 Chứng chỉ của tôi
-                          </Link>
-                          <Link
-                            href="/me/profile"
-                            className="block px-4 py-2.5 rounded-md hover:bg-[#282d39] text-white transition-colors"
-                            onClick={() => setMenuOpen(false)}
-                          >
+                      <Link
+                        href="/me/certificates"
+                        className="block px-4 py-2.5 rounded-md hover:bg-[#282d39] text-white transition-colors"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        🎓 Chứng chỉ của tôi
+                      </Link>
+                      <Link
+                        href="/me/schedule"
+                        className="block px-4 py-2.5 rounded-md hover:bg-[#282d39] text-white transition-colors"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        🗓 Lịch học của tôi
+                      </Link>
+                      <Link
+                        href="/me/profile"
+                        className="block px-4 py-2.5 rounded-md hover:bg-[#282d39] text-white transition-colors"
+                        onClick={() => setMenuOpen(false)}
+                      >
                             ⚙️ Chỉnh sửa hồ sơ
                           </Link>
                         </>

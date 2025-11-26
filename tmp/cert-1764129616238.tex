@@ -1,0 +1,46 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, margin=0pt]{geometry}
+\pagestyle{empty}
+
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+\begin{document}
+\noindent % <-- FIX LỆCH BACKGROUND
+
+% --- Background full-page ---
+\begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=center] at (current page.center) {
+        \includegraphics[width=\paperwidth, height=\paperheight]{background.png}
+    };
+\end{tikzpicture}
+
+\vspace*{85mm}
+
+\begin{center}
+    {\fontsize{26pt}{30pt}\bfseries\MakeUppercase{TOEIC 650+ (K003)} \par}
+    \vspace{3mm}
+    {\fontsize{13pt}{16pt} This certificate is proudly presented to:\par}
+\end{center}
+
+\vspace{22mm}
+
+\begin{center}
+    {\fontsize{22pt}{24pt}\bfseries\MakeUppercase{Võ Tấn Phát} \par}
+
+    \vspace{3mm}
+    {\fontsize{12pt}{14pt} Date of Birth: 2003-09-08 \par}
+
+    \vspace{10mm}
+    {\fontsize{12pt}{14pt}
+        Final Score: \textbf{650} \\
+        Completion Date: \textbf{2025-11-19}
+        \par}
+\end{center}
+
+\end{document}

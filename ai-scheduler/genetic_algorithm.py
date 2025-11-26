@@ -19,11 +19,17 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-HARD_PENALTY = 1_000_000
-ASSIGNED_REWARD = 100
-UNASSIGNED_PENALTY = 150
-UNASSIGNED_HARD_PENALTY = 10_000
-GHOST_CLASS_PENALTY = 1_000
+HARD_PENALTY = 500000
+VIOLATION_PENALTY = 20000
+ASSIGNED_REWARD = 1000
+UNASSIGNED_PENALTY = 2000
+UNASSIGNED_HARD_PENALTY = 50000
+GHOST_CLASS_PENALTY = 5000
+VALID_SCHEDULE_BONUS = 50000
+BASELINE_SCORE = 1_000_000
+UNQUALIFIED_PENALTY = 5000
+CAPACITY_PENALTY_UNIT = 50000
+SOFT_AVAIL_MATCH_REWARD = 50
 
 
 @dataclass
@@ -102,6 +108,7 @@ def genetic_algorithm(
         )
 
     qualified_teachers = [t for t in teachers if teacher_supports_course(t)]
+    qualification_enforced = len(qualified_teachers) > 0
     if not qualified_teachers:
         qualified_teachers = teachers
 
@@ -449,7 +456,7 @@ def genetic_algorithm(
                 cls.room_id = replacement.room_id
                 cls.slots = replacement.slots
                 cls.student_ids.clear()
-                if attempts > 20:
+                if attempts > 100:
                     break
 
     def normalize_students(individual: Individual) -> None:
@@ -513,83 +520,172 @@ def genetic_algorithm(
     def repair_individual(individual: Individual) -> None:
         enforce_resource_conflicts(individual)
         normalize_students(individual)
-        fill_from_unassigned(individual)
+        if individual.unassigned_students and random.random() < 0.7:
+            fill_from_unassigned(individual)
 
-    def fitness(individual: Individual) -> int:
+    def create_feasible_individual() -> Individual:
+        classes: List[ClassAssignment] = []
+        sorted_templates = sorted(
+            valid_templates,
+            key=lambda tpl: len(template_candidate_students.get(tpl, set())),
+            reverse=True,
+        )
+        for tpl in sorted_templates:
+            if len(classes) >= num_classes:
+                break
+            if has_conflict(tpl, classes):
+                continue
+            t_id, r_id, slots = tpl
+            classes.append(
+                ClassAssignment(
+                    teacher_id=t_id,
+                    room_id=r_id,
+                    slots=tuple(sorted(slots)),
+                    student_ids=set(),
+                )
+            )
+        individual = Individual(classes=classes, unassigned_students=set())
+        assign_students_greedily(individual)
+        repair_individual(individual)
+        return individual
+
+    current_gen = -1
+    gamma_H1 = UNQUALIFIED_PENALTY
+    gamma_H2 = CAPACITY_PENALTY_UNIT
+    gamma_H3 = VIOLATION_PENALTY
+    from collections import deque
+    K = 5
+    violation_history = {
+        "H1": deque(maxlen=K),
+        "H2": deque(maxlen=K),
+        "H3": deque(maxlen=K),
+    }
+
+    def fitness_with_stats(individual: Individual) -> Tuple[int, Dict[str, int]]:
         teacher_usage: Dict[str, Set[str]] = {}
         room_usage: Dict[str, Set[str]] = {}
         assigned_students: Set[int] = set()
-        score = 0
+        score = ASSIGNED_REWARD * len(enrollments_by_id)
+        total_penalty = 0
+        hard_penalty_count = 0
+        violation_penalty_count = 0
+        invalid_student_slot_count = 0
+        duplicate_student_assignment_count = 0
+        ghost_class_count = 0
+        hard_missing_resource_count = 0
+        hard_capacity_overflow_count = 0
+        hard_unqualified_teacher_count = 0
+        h1_count = 0
+        h2_overflow = 0
+        h3_count = 0
 
         for cls in individual.classes:
             room = rooms_by_id.get(cls.room_id)
             teacher = teachers_by_id.get(cls.teacher_id)
 
-            if not cls.student_ids:
-                score -= GHOST_CLASS_PENALTY
-
             if room is None or teacher is None:
-                return -HARD_PENALTY
+                total_penalty += HARD_PENALTY
+                hard_penalty_count += 1
+                hard_missing_resource_count += 1
+                continue
 
             if course.requirement_qualification and not teacher_supports_course(teacher):
-                return -HARD_PENALTY
+                total_penalty += gamma_H1
+                hard_unqualified_teacher_count += 1
+                h1_count += 1
 
             if len(cls.student_ids) > room.capacity:
-                return -HARD_PENALTY
+                overflow = len(cls.student_ids) - room.capacity
+                total_penalty += gamma_H2 * overflow
+                hard_penalty_count += 1
+                hard_capacity_overflow_count += 1
+                h2_overflow += overflow
 
             slot_set = set(cls.slots)
+            violated = False
             for slot in slot_set:
                 if slot not in teacher.availability or slot not in room.availability:
-                    return -HARD_PENALTY
+                    total_penalty += gamma_H3
+                    violation_penalty_count += 1
+                    violated = True
                 if slot in teacher_usage.get(cls.teacher_id, set()):
-                    return -HARD_PENALTY
+                    total_penalty += gamma_H3
+                    violation_penalty_count += 1
+                    violated = True
                 if slot in room_usage.get(cls.room_id, set()):
-                    return -HARD_PENALTY
-            teacher_usage.setdefault(cls.teacher_id, set()).update(slot_set)
-            room_usage.setdefault(cls.room_id, set()).update(slot_set)
+                    total_penalty += gamma_H3
+                    violation_penalty_count += 1
+                    violated = True
+            if not violated:
+                teacher_usage.setdefault(cls.teacher_id, set()).update(slot_set)
+                room_usage.setdefault(cls.room_id, set()).update(slot_set)
+            else:
+                h3_count += 1
 
             for student_id in cls.student_ids:
                 student_slots = enrollment_slot_sets.get(student_id)
                 if not student_slots or not slot_set.issubset(student_slots):
-                    return -HARD_PENALTY
+                    total_penalty += UNASSIGNED_HARD_PENALTY
+                    invalid_student_slot_count += 1
                 if student_id in assigned_students:
-                    return -HARD_PENALTY
+                    total_penalty += UNASSIGNED_PENALTY
+                    duplicate_student_assignment_count += 1
                 assigned_students.add(student_id)
+                if slot_set.issubset(student_slots) and set(slot_set).issubset(set(teacher.availability)):
+                    score += SOFT_AVAIL_MATCH_REWARD
 
-            score += ASSIGNED_REWARD * len(cls.student_ids)
+            if not cls.student_ids:
+                total_penalty += GHOST_CLASS_PENALTY
+                ghost_class_count += 1
 
-            if cls.student_ids:
-                fill_ratio = len(cls.student_ids) / max(1, room.capacity)
+            if room and room.capacity > 0 and cls.student_ids:
+                fill_ratio = len(cls.student_ids) / room.capacity
                 if fill_ratio > 0.85:
-                    score += 10
+                    score += 500
                 elif fill_ratio < 0.4:
-                    score -= 10
+                    total_penalty += 500
 
         total_students = set(enrollment_slot_sets.keys())
         missing = total_students - assigned_students
-        score -= UNASSIGNED_PENALTY * len(missing)
-        if missing:
-            score -= UNASSIGNED_HARD_PENALTY * len(missing)
+        total_penalty += UNASSIGNED_PENALTY * len(missing)
 
-        return score
+        final_score = BASELINE_SCORE + score - total_penalty
+        if total_penalty < 1000:
+            final_score += VALID_SCHEDULE_BONUS
+        if current_gen == 0:
+            logger.info(
+                "GA diag g=%d | score=%d | hard=%d | hard_missing=%d | hard_capacity=%d | hard_unqualified=%d | viol=%d | invalid_slot=%d | dup_assign=%d | ghost=%d | missing=%d",
+                current_gen,
+                final_score,
+                hard_penalty_count,
+                hard_missing_resource_count,
+                hard_capacity_overflow_count,
+                hard_unqualified_teacher_count,
+                violation_penalty_count,
+                invalid_student_slot_count,
+                duplicate_student_assignment_count,
+                ghost_class_count,
+                len(missing),
+            )
+        return final_score, {"H1": h1_count, "H2": h2_overflow, "H3": h3_count, "soft": score, "hard": total_penalty}
+
+    def fitness(individual: Individual) -> int:
+        return fitness_with_stats(individual)[0]
 
     def crossover(p1: Individual, p2: Individual) -> Individual:
         if not p1.classes and not p2.classes:
             return clone_individual(p1)
-
         if random.random() > settings.CROSSOVER_RATE:
             return clone_individual(random.choice([p1, p2]))
-
-        length = max(len(p1.classes), len(p2.classes))
+        max_len = max(len(p1.classes), len(p2.classes))
         child_classes: List[ClassAssignment] = []
-
-        for idx in range(length):
-            if idx < len(p1.classes) and idx < len(p2.classes):
-                source = p1.classes[idx] if random.random() < 0.5 else p2.classes[idx]
-            elif idx < len(p1.classes):
-                source = p1.classes[idx]
+        for i in range(max_len):
+            if i < len(p1.classes) and i < len(p2.classes):
+                source = p1.classes[i] if random.random() < 0.5 else p2.classes[i]
+            elif i < len(p1.classes):
+                source = p1.classes[i]
             else:
-                source = p2.classes[idx]
+                source = p2.classes[i]
             child_classes.append(
                 ClassAssignment(
                     teacher_id=source.teacher_id,
@@ -598,9 +694,10 @@ def genetic_algorithm(
                     student_ids=set(source.student_ids),
                 )
             )
-
         child = Individual(classes=child_classes, unassigned_students=set())
         repair_individual(child)
+        if random.random() < 0.3:
+            mutate(child)
         return child
 
     def mutation_insert_unassigned(individual: Individual) -> bool:
@@ -684,6 +781,8 @@ def genetic_algorithm(
         individual.unassigned_students.update(dropped)
         return True
 
+    mut_rate = settings.MUTATION_RATE
+
     def mutate(individual: Individual) -> Individual:
         mutated = False
         operations = [
@@ -694,43 +793,143 @@ def genetic_algorithm(
         ]
         random.shuffle(operations)
         for op in operations:
-            if random.random() < settings.MUTATION_RATE:
+            if random.random() < mut_rate:
                 mutated = op(individual) or mutated
         if mutated:
             repair_individual(individual)
         return individual
 
-    population: List[Individual] = [create_random_individual() for _ in range(settings.POPULATION_SIZE)]
+    def tournament_select(scored: List[Tuple[Individual, int]], size: int = 3) -> Individual:
+        pool = random.sample(scored, min(size, len(scored)))
+        pool.sort(key=lambda item: item[1], reverse=True)
+        return pool[0][0]
+
+    def individual_similarity(a: Individual, b: Individual) -> float:
+        set_a = set((c.teacher_id, c.room_id, c.slots) for c in a.classes)
+        set_b = set((c.teacher_id, c.room_id, c.slots) for c in b.classes)
+        if not set_a and not set_b:
+            return 1.0
+        inter = len(set_a & set_b)
+        union = len(set_a | set_b) or 1
+        return inter / union
+
+    def local_search(individual: Individual) -> None:
+        enforce_resource_conflicts(individual)
+        normalize_students(individual)
+        if individual.unassigned_students:
+            fill_from_unassigned(individual)
+
+    population: List[Individual] = []
+    feasible_share = max(1, int(settings.POPULATION_SIZE * 0.6))
+    for _ in range(min(feasible_share, settings.POPULATION_SIZE)):
+        population.append(create_feasible_individual())
+    for _ in range(max(0, settings.POPULATION_SIZE - len(population))):
+        population.append(create_random_individual())
+    fitness_history: List[int] = []
+    avg_history: List[int] = []
+    best_soft_history: List[int] = []
+    best_hard_history: List[int] = []
+    avg_soft_history: List[int] = []
+    avg_hard_history: List[int] = []
+
+    stagnation = 0
+    prev_best: int | None = None
 
     for gen in range(settings.GENERATIONS):
+        current_gen = gen
         scored = [(ind, fitness(ind)) for ind in population]
         scored.sort(key=lambda item: item[1], reverse=True)
+        fitness_history.append(scored[0][1] if scored else 0)
 
-        elite_count = max(1, settings.POPULATION_SIZE // 5)
+        elite_count = max(2, int(settings.POPULATION_SIZE * 0.15))
         new_population: List[Individual] = [
             clone_individual(ind) for ind, _ in scored[:elite_count]
         ]
 
-        parent_pool = [ind for ind, _ in scored[: max(2, settings.POPULATION_SIZE // 2)]]
-
         while len(new_population) < settings.POPULATION_SIZE:
-            if len(parent_pool) >= 2:
-                p1, p2 = random.sample(parent_pool, 2)
-            else:
-                p1 = p2 = parent_pool[0]
-            child = crossover(p1, p2)
-            mutate(child)
-            new_population.append(child)
+            p1 = tournament_select(scored, size=3)
+            p2 = tournament_select(scored, size=3)
+            c1 = crossover(p1, p2)
+            c2 = crossover(p2, p1)
+            mutate(c1)
+            mutate(c2)
+
+            # DC: mỗi con chỉ cạnh tranh với cha mẹ giống nó nhất
+            sim_c1_p1 = individual_similarity(c1, p1)
+            sim_c1_p2 = individual_similarity(c1, p2)
+            parent_c1 = p1 if sim_c1_p1 >= sim_c1_p2 else p2
+            sim_c2_p1 = individual_similarity(c2, p1)
+            sim_c2_p2 = individual_similarity(c2, p2)
+            parent_c2 = p1 if sim_c2_p1 >= sim_c2_p2 else p2
+
+            if len(new_population) < settings.POPULATION_SIZE:
+                new_population.append(c1 if fitness(c1) >= fitness(parent_c1) else clone_individual(parent_c1))
+            if len(new_population) < settings.POPULATION_SIZE:
+                new_population.append(c2 if fitness(c2) >= fitness(parent_c2) else clone_individual(parent_c2))
 
         population = new_population
+
+        best_score = scored[0][1] if scored else 0
+        top_pool = scored[: max(1, int(len(scored) * 0.4))]
+        agg = {"H1": 0, "H2": 0, "H3": 0}
+        for ind, _ in top_pool:
+            _, s = fitness_with_stats(ind)
+            agg["H1"] += s["H1"]
+            agg["H2"] += s["H2"]
+            agg["H3"] += s["H3"]
+        for k in ["H1","H2","H3"]:
+            violation_history[k].append(agg[k])
+            if len(violation_history[k]) == K:
+                w = list(violation_history[k])
+                any_decrease = any(w[i] < w[i-1] for i in range(1, K))
+                if not any_decrease:
+                    if k == "H1":
+                        gamma_H1 = min(int(gamma_H1 * 1.5), 5_000_000)
+                    elif k == "H2":
+                        gamma_H2 = min(int(gamma_H2 * 1.5), 5_000_000)
+                    else:
+                        gamma_H3 = min(int(gamma_H3 * 1.5), 5_000_000)
+                    mut_rate = min(0.5, mut_rate + 0.1)
+                    half = max(1, settings.POPULATION_SIZE // 2)
+                    new_pop = population[:half]
+                    new_pop.extend([create_random_individual() for _ in range(half)])
+                    population = new_pop[: settings.POPULATION_SIZE]
+                    logger.info(
+                        "GA APW escalate | k=%s | gamma=(%d,%d,%d) | mut=%.2f",
+                        k,
+                        gamma_H1,
+                        gamma_H2,
+                        gamma_H3,
+                        mut_rate,
+                    )
 
         if scored:
             best_score = scored[0][1]
             avg_score = sum(score for _, score in scored) // max(1, len(scored))
+            bs, bstats = fitness_with_stats(scored[0][0])
+            s_total = 0
+            h_total = 0
+            for ind, _ in scored:
+                _, st = fitness_with_stats(ind)
+                s_total += st.get("soft", 0)
+                h_total += st.get("hard", 0)
+            avg_soft = s_total // max(1, len(scored))
+            avg_hard = h_total // max(1, len(scored))
+            best_soft_history.append(bstats.get("soft", 0))
+            best_hard_history.append(bstats.get("hard", 0))
+            avg_soft_history.append(avg_soft)
+            avg_hard_history.append(avg_hard)
             unassigned = len(scored[0][0].unassigned_students)
+            top_count = max(1, int(len(population) * 0.2))
+            for ind, _ in scored[:top_count]:
+                local_search(ind)
         else:
             best_score = 0
             avg_score = 0
+            best_soft_history.append(0)
+            best_hard_history.append(0)
+            avg_soft_history.append(0)
+            avg_hard_history.append(0)
             unassigned = len(enrollment_slot_sets)
 
         if gen % 10 == 0 or gen == settings.GENERATIONS - 1:
@@ -741,6 +940,22 @@ def genetic_algorithm(
                 avg_score,
                 unassigned,
             )
+        
+        avg_history.append(avg_score)
+
+        if prev_best is None or best_score > prev_best:
+            stagnation = 0
+            prev_best = best_score
+        else:
+            stagnation += 1
+            if stagnation >= 10:
+                mut_rate = min(0.5, mut_rate + 0.1)
+                half = max(1, settings.POPULATION_SIZE // 2)
+                new_pop = population[:half]
+                new_pop.extend([create_random_individual() for _ in range(half)])
+                population = new_pop[: settings.POPULATION_SIZE]
+                stagnation = 0
+                logger.info("GA restarted with diversity injection")
 
     if not scored:
         raise ValueError("Khong the danh gia lich vi danh sach ca the rong.")
@@ -785,11 +1000,32 @@ def genetic_algorithm(
             )
 
     if assigned_students != total_students:
-        raise ValueError("Khong the lap lich thoa man cho tat ca hoc vien.")
+        logger.warning(
+            "GA partial schedule | unassigned=%d", len(total_students - assigned_students)
+        )
 
     final_classes.sort(
         key=lambda cls: (tuple(sorted(cls.slots)), cls.teacher_id, cls.room_id)
     )
+
+    if not final_classes and valid_templates:
+        tpl = max(
+            valid_templates,
+            key=lambda t: len(template_candidate_students.get(t, set())),
+        )
+        t_id, r_id, slots = tpl
+        capacity = rooms_by_id[r_id].capacity
+        candidates = list(template_candidate_students.get(tpl, set()))
+        selected = candidates[: max(0, capacity)]
+        final_classes.append(
+            ClassAssignment(
+                teacher_id=t_id,
+                room_id=r_id,
+                slots=tuple(sorted(slots)),
+                student_ids=set(selected),
+            )
+        )
+        assigned_students.update(selected)
 
     final_score = ASSIGNED_REWARD * len(assigned_students)
     logger.info(
@@ -832,11 +1068,92 @@ def genetic_algorithm(
                     ScheduledEnrollment(
                         scheduledClassId=scheduled_class_id,
                         enrollmentId=student_id,
-                    )
                 )
+            )
 
+    chart_b64: str | None = None
+    try:
+        import os
+        import io
+        import base64
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        xs = list(range(len(fitness_history)))
+        ys_best = fitness_history
+        ys_avg = avg_history
+        def norm(series: List[int]) -> List[float]:
+            if not series:
+                return []
+            mn = min(series)
+            mx = max(series)
+            if mx == mn:
+                return [100.0 for _ in series]
+            return [((v - mn) * 100.0) / (mx - mn) for v in series]
+        def smooth(series: List[float], w: int = 7) -> List[float]:
+            if not series:
+                return []
+            n = len(series)
+            out: List[float] = []
+            for i in range(n):
+                s = 0.0
+                c = 0
+                for j in range(max(0, i - w + 1), i + 1):
+                    s += series[j]
+                    c += 1
+                out.append(s / max(1, c))
+            return out
+        n_best = norm(ys_best)
+        n_avg = norm(ys_avg)
+        n_best_soft = norm(best_soft_history)
+        n_best_hard = norm(best_hard_history)
+        n_avg_soft = norm(avg_soft_history)
+        n_avg_hard = norm(avg_hard_history)
+        n_best = smooth(n_best)
+        n_avg = smooth(n_avg)
+        n_best_soft = smooth(n_best_soft)
+        n_best_hard = smooth(n_best_hard)
+        n_avg_soft = smooth(n_avg_soft)
+        n_avg_hard = smooth(n_avg_hard)
+        fig = plt.figure(figsize=(8, 4.5))
+        if len(n_best) == len(xs):
+            plt.plot(xs, n_best, color="tab:blue", label="Best (norm)")
+        if len(n_avg) == len(xs):
+            plt.plot(xs, n_avg, color="tab:orange", label="Average (norm)")
+        if len(n_best_hard) == len(xs):
+            plt.plot(xs, n_best_hard, color="tab:red", alpha=0.6, label="Hard (best, norm)")
+        if len(n_best_soft) == len(xs):
+            plt.plot(xs, n_best_soft, color="tab:green", alpha=0.6, label="Soft (best, norm)")
+        if len(n_avg_hard) == len(xs):
+            plt.plot(xs, n_avg_hard, color="tab:pink", alpha=0.5, label="Hard (avg, norm)")
+        if len(n_avg_soft) == len(xs):
+            plt.plot(xs, n_avg_soft, color="tab:olive", alpha=0.5, label="Soft (avg, norm)")
+        plt.xlabel("Generation")
+        plt.xlim(0, 80)
+        plt.ylabel("Normalized (0-100)")
+        plt.legend(loc="best")
+        out_path = os.path.join(os.path.dirname(__file__), "ga_convergence_chart.png")
+        fig.savefig(out_path, dpi=120, bbox_inches="tight")
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=120, bbox_inches="tight")
+        buf.seek(0)
+        chart_b64 = base64.b64encode(buf.read()).decode("ascii")
+        buf.close()
+        plt.close(fig)
+    except Exception:
+        chart_b64 = None
+
+    diagnostics = {
+        "unassigned": len(total_students - assigned_students),
+        "gamma": {"H1": gamma_H1, "H2": gamma_H2, "H3": gamma_H3},
+        "pop": settings.POPULATION_SIZE,
+        "gens": settings.GENERATIONS,
+        "chartNormalized": True,
+        "chartSmoothed": True,
+    }
     return ScheduleResult(
         scheduledClasses=scheduled_classes,
         scheduledEnrollments=scheduled_enrollments,
+        convergenceChartBase64=chart_b64,
+        diagnostics=diagnostics,
     )
-

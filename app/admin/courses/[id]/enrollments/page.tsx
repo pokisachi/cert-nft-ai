@@ -408,6 +408,28 @@ const handleRunScheduler = async () => {
               <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{new Date(runMeta.generatedAt).toLocaleString()}</span>
             </div>
           )}
+          {schedulePreview?.convergenceChartBase64 && (
+            <div className="mb-4">
+              <div className="text-sm text-white/70 mb-2 flex items-center gap-2"><CalendarDays className="h-4 w-4" />Biểu đồ hội tụ GA</div>
+              <img
+                src={`data:image/png;base64,${schedulePreview.convergenceChartBase64}`}
+                alt="GA convergence chart"
+                className="w-full max-h-[360px] object-contain rounded-lg border border-[#3b4354] bg-[#12151b]"
+              />
+            </div>
+          )}
+          {!schedulePreview?.scheduledClasses?.length && schedulePreview?.diagnostics && (
+            <div className="mb-4 text-sm text-white/80">
+              <div className="font-semibold mb-1">Chưa có đề xuất lịch hợp lệ.</div>
+              <div className="text-white/70">Chẩn đoán nhanh:</div>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <div className="rounded border border-[#3b4354] bg-[#12151b] p-2">Unassigned: {schedulePreview.diagnostics.unassigned ?? 0}</div>
+                <div className="rounded border border-[#3b4354] bg-[#12151b] p-2">Gamma H1: {schedulePreview.diagnostics.gamma?.H1 ?? 0}</div>
+                <div className="rounded border border-[#3b4354] bg-[#12151b] p-2">Gamma H2: {schedulePreview.diagnostics.gamma?.H2 ?? 0}</div>
+                <div className="rounded border border-[#3b4354] bg-[#12151b] p-2">Gamma H3: {schedulePreview.diagnostics.gamma?.H3 ?? 0}</div>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
               {groupedSchedules.length > 0 ? (
                 groupedSchedules.map((group: any, idx: number) => (

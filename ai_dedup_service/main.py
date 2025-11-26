@@ -4,6 +4,9 @@ from config import CORPUS_BACKEND
 from services.dedup_service_impl import DedupService
 from services.corpus_repo.corpus_repo import get_corpus_repo
 from fastapi.middleware.cors import CORSMiddleware
+from services.evaluation_service import calculate_dedup_metrics, mock_evaluation_data, save_confusion_heatmap
+from fastapi.responses import FileResponse
+import os
 
 # ----- app khởi tạo TRƯỚC mọi decorator
 app = FastAPI(title="AI Dedup Service")
@@ -158,3 +161,71 @@ async def issue_final(body: IssueFinalIn, admin=Depends(require_admin)):
             "source_date_epoch": (body.options.source_date_epoch if body.options else None)
         }
     )
+
+@app.post("/api/evaluate/dedup")
+async def evaluate_dedup():
+    y_true, y_pred = mock_evaluation_data()
+    metrics = calculate_dedup_metrics(y_true, y_pred)
+    heatmap_path = None
+    try:
+        heatmap_path = save_confusion_heatmap(y_true, y_pred)
+    except Exception:
+        heatmap_path = None
+    return {
+        "status": "success",
+        "evaluation_metrics": metrics,
+        "heatmap_url": "/api/evaluate/dedup/heatmap" if heatmap_path else None,
+    }
+
+@app.get("/api/evaluate/dedup/heatmap")
+async def evaluate_dedup_heatmap():
+    path = "dedup_confusion_matrix.png"
+    if os.path.exists(path):
+        return FileResponse(path, media_type="image/png")
+    raise HTTPException(404, "HEATMAP_NOT_FOUND")
+
+# ====== Optimization (Grid Search)
+class PairIn(BaseModel):
+    mhScore: float
+    simhashScore: float
+    y_true: int
+
+class OptimizeIn(BaseModel):
+    pairs: list[PairIn]
+    alpha_grid: list[float] | None = None
+    threshold_unique_grid: list[float] | None = None
+    threshold_duplicate_grid: list[float] | None = None
+    ambiguous_positive: bool = True
+
+@app.post("/api/evaluate/dedup/optimize")
+async def optimize_dedup(body: OptimizeIn):
+    if not body.pairs:
+        raise HTTPException(400, "EMPTY_PAIRS")
+    alphas = body.alpha_grid or [0.3, 0.4, 0.5, 0.6, 0.7]
+    tus = body.threshold_unique_grid or [0.75, 0.8]
+    tds = body.threshold_duplicate_grid or [0.9, 0.95]
+
+    y_true = [p.y_true for p in body.pairs]
+
+    best = None
+    surf = []
+    for a in alphas:
+        b = 1.0 - a
+        for tu in tus:
+            for td in tds:
+                y_pred = []
+                for p in body.pairs:
+                    c = a * p.mhScore + b * p.simhashScore
+                    if c < tu:
+                        y_pred.append(0)
+                    elif c >= td:
+                        y_pred.append(1)
+                    else:
+                        y_pred.append(1 if body.ambiguous_positive else 0)
+                m = calculate_dedup_metrics(y_true, y_pred)
+                entry = {"alpha": round(a, 2), "threshold_unique": tu, "threshold_duplicate": td, "metrics": m}
+                surf.append(entry)
+                if not best or m["f1_score"] > best["metrics"]["f1_score"]:
+                    best = entry
+
+    return {"status": "success", "best": best, "surface": surf[:50]}
