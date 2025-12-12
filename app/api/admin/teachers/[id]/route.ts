@@ -48,7 +48,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-    await prisma.teacher.delete({ where: { id } });
+
+    await prisma.$transaction([
+      prisma.scheduledEnrollment.deleteMany({
+        where: { scheduledClass: { teacherId: id } },
+      }),
+      prisma.scheduledClass.deleteMany({
+        where: { teacherId: id },
+      }),
+      prisma.teacherQualification.deleteMany({
+        where: { teacherId: id },
+      }),
+      prisma.teacher.delete({ where: { id } }),
+    ]);
+
     return NextResponse.json({ message: "Đã xóa giảng viên thành công!" });
   } catch (err) {
     console.error("❌ DELETE /teachers/:id", err);

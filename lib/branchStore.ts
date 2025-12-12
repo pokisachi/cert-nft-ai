@@ -63,11 +63,14 @@ export async function saveBranches(items: Branch[]) {
   await fs.writeFile(storePath, JSON.stringify(items, null, 2), 'utf-8')
 }
 
-export async function addBranch(item: Branch) {
+export async function addBranch(item: Omit<Branch, 'id'> & { id?: string }) {
   const items = await listBranches()
+  if (!item.id) {
+    item.id = `BR-${Date.now().toString().slice(-6)}`
+  }
   const exists = items.some((b) => b.id === item.id)
   if (exists) throw new Error('DUPLICATE_ID')
-  items.push(item)
+  items.push(item as Branch)
   await saveBranches(items)
   return item
 }

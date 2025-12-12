@@ -144,16 +144,134 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const already = await prisma.scheduledEnrollment.findMany({
+      where: { scheduledClass: { courseId: Number(courseId) } },
+      select: {
+        enrollmentId: true,
+        enrollment: {
+          select: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (already.length > 0) {
+      const learners = already
+        .map((se) => ({
+          enrollmentId: se.enrollmentId,
+          learner: {
+            id: se.enrollment?.user?.id ?? null,
+            name: se.enrollment?.user?.name ?? "—",
+            email: se.enrollment?.user?.email ?? "—",
+          },
+        }))
+        .filter(
+          (v, i, arr) => arr.findIndex((x) => x.enrollmentId === v.enrollmentId) === i
+        );
+
+      return NextResponse.json(
+        {
+          error: "Một số học viên đã có lịch học trong khoá này",
+          count: learners.length,
+          learners,
+          hint:
+            "Hủy lịch cũ hoặc bỏ chọn các học viên đã có lịch trước khi chạy xếp lịch.",
+        },
+        { status: 409 }
+      );
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 6️⃣ CHUẨN BỊ PAYLOAD CHO AI SCHEDULER
     // ═══════════════════════════════════════════════════════════════════════
     
+    // 🔧 Fallback: nếu không có giáo viên nào đạt chuyên môn yêu cầu, bỏ qua ràng buộc
+    const reqQual = course.requirement_qualification;
+    const hasQualified = reqQual
+      ? teachers.some((t) => (t.qualifications || []).some((q) => String(q).includes(reqQual)))
+      : true;
+
+    // 🔧 Fallback: số buổi/tuần không vượt quá số slot tối thiểu học viên có
+    const minSlotsPerStudent = Math.min(
+      ...enrollments.map((e) => Array.isArray(e.availableSlots) ? e.availableSlots.length : 0)
+    );
+    const lessonsPerWeek = Math.max(1, Math.min(course.structure_lessons_per_week || 3, isFinite(minSlotsPerStudent) ? minSlotsPerStudent : 3));
+
+    const coursePayload = {
+      ...course,
+      requirement_qualification: hasQualified ? course.requirement_qualification : null,
+      structure_lessons_per_week: lessonsPerWeek,
+    };
+
     const payload = { 
-      course, 
+      course: coursePayload, 
       teachers, 
       rooms, 
       enrollments 
     };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 6️⃣.1️⃣ FEASIBILITY CHECK TRƯỚC KHI GỌI AI
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const allTeacherEmpty = teachers.every((t) => !Array.isArray(t.availability) || t.availability.length === 0);
+    if (allTeacherEmpty) {
+      return NextResponse.json(
+        {
+          error: "Không có lịch trống nào của giáo viên",
+          hint: "Cấu hình availability cho ít nhất một giáo viên",
+        },
+        { status: 400 }
+      );
+    }
+
+    const allRoomEmpty = rooms.every((r) => !Array.isArray(r.availability) || r.availability.length === 0);
+    if (allRoomEmpty) {
+      return NextResponse.json(
+        {
+          error: "Không có lịch trống nào của phòng học",
+          hint: "Cấu hình availability cho ít nhất một phòng",
+        },
+        { status: 400 }
+      );
+    }
+
+    const pairSlots = new Set<string>();
+    for (const t of teachers) {
+      const tset = new Set<string>(t.availability || []);
+      for (const r of rooms) {
+        const rset = new Set<string>(r.availability || []);
+        for (const s of tset) {
+          if (rset.has(s)) pairSlots.add(s);
+        }
+      }
+    }
+
+    if (pairSlots.size === 0) {
+      return NextResponse.json(
+        {
+          error: "Không có slot chung giữa giáo viên và phòng",
+          hint: "Đảm bảo ít nhất một slot trùng giữa availability của giáo viên và phòng",
+        },
+        { status: 400 }
+      );
+    }
+
+    const lpw = coursePayload.structure_lessons_per_week || 3;
+    const canAnyStudentBeScheduled = enrollments.some((e) => {
+      const cnt = (e.availableSlots || []).filter((s: string) => pairSlots.has(s)).length;
+      return cnt >= lpw;
+    });
+    if (!canAnyStudentBeScheduled) {
+      return NextResponse.json(
+        {
+          error: "Không có học viên nào có đủ slot phù hợp với giáo viên/phòng",
+          hint: `Mỗi học viên cần ≥ ${lpw} slot trùng với slot chung giáo viên/phòng`,
+        },
+        { status: 400 }
+      );
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 7️⃣ DEBUG LOGS - ✅ FIXED LỖI 4
@@ -183,13 +301,32 @@ export async function POST(req: NextRequest) {
     
     console.log(`🔄 Calling FastAPI: ${endpoint}`);
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify(payload),
-    });
+    const postController = new AbortController();
+    const postTimeout = setTimeout(() => postController.abort(), 30000);
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify(payload),
+        signal: postController.signal,
+      });
+    } catch (e: any) {
+      clearTimeout(postTimeout);
+      return NextResponse.json(
+        {
+          error: "AI Scheduler timeout hoặc không phản hồi",
+          message: e?.message || "Request aborted",
+          endpoint,
+          hint: "Kiểm tra lại tiến trình FastAPI và giảm tham số GENERATIONS nếu cần",
+        },
+        { status: 504 }
+      );
+    } finally {
+      clearTimeout(postTimeout);
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 9️⃣ XỬ LÝ LỖI TỪ FASTAPI - ✅ FIXED LỖI 5

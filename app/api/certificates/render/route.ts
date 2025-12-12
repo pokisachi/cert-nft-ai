@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // Validate tổi thiểu
     // ---------------------------------
     if (!body.examResultId || !body.issue_date) {
-      return NextResponse.json({ code: "VALIDATION_FAILED" }, { status: 400 });
+      return NextResponse.json({ code: "VALIDATION_FAILED", error: "VALIDATION_FAILED" }, { status: 400 });
     }
 
     const er = await prisma.examResult.findUnique({
@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!er || !er.user || !er.examSession?.course) {
-      return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json({ code: "NOT_FOUND", error: "NOT_FOUND" }, { status: 404 });
     }
 
     if (er.status !== "PASS") {
-      return NextResponse.json({ code: "NOT_PASS" }, { status: 400 });
+      return NextResponse.json({ code: "NOT_PASS", error: "NOT_PASS" }, { status: 400 });
     }
 
     const course = er.examSession.course;
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     else if (category === "TINHOC") profile = "TINHOC";
     else {
       return NextResponse.json(
-        { code: "COURSE_CATEGORY_UNSUPPORTED" },
+        { code: "COURSE_CATEGORY_UNSUPPORTED", error: "COURSE_CATEGORY_UNSUPPORTED" },
         { status: 400 }
       );
     }
@@ -64,11 +64,11 @@ export async function POST(req: NextRequest) {
     // ---------------------------------
     const score = er.score ?? 0;
 
-    if (profile === "TOEIC" && (score < 250 || score > 900)) {
-      return NextResponse.json({ code: "SCORE_OUT_OF_RANGE" }, { status: 400 });
+    if (profile === "TOEIC" && (score < 250 || score > 990)) {
+      return NextResponse.json({ code: "SCORE_OUT_OF_RANGE", error: "SCORE_OUT_OF_RANGE" }, { status: 400 });
     }
     if (profile === "TINHOC" && (score < 0 || score > 10)) {
-      return NextResponse.json({ code: "SCORE_OUT_OF_RANGE" }, { status: 400 });
+      return NextResponse.json({ code: "SCORE_OUT_OF_RANGE", error: "SCORE_OUT_OF_RANGE" }, { status: 400 });
     }
 
     // ---------------------------------
@@ -166,6 +166,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("CERT Render error:", err);
-    return NextResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 });
+    return NextResponse.json({ code: "INTERNAL_ERROR", error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

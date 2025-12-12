@@ -58,8 +58,15 @@ function CertificatesPublicContent() {
         const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
         const url = `${base.replace(/\/$/, "")}/certificates/ai-search?query=${encodeURIComponent(q)}`;
         const res = await fetch(url);
-        const data = await res.json().catch(() => []);
-        setAiResults(Array.isArray(data) ? data : []);
+        const data = await res.json().catch(() => ({ results: [], retrieval_metrics: null }));
+        if (data && Array.isArray(data.results)) {
+          setAiResults(data.results);
+          
+        } else {
+          // Fallback to old array format
+          setAiResults(Array.isArray(data) ? data : []);
+          
+        }
       } catch {
         setAiResults([]);
       } finally {

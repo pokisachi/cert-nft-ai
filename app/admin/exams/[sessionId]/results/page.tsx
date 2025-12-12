@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { use } from "react";
+import { CheckCircle2, AlertTriangle, Copy } from "lucide-react";
 
 type Row = {
   examResultId: number;
@@ -29,13 +30,6 @@ type AIResult = {
   certId?: string;
 };
 
-type EvalMetrics = {
-  f1_score: number;
-  precision: number;
-  recall: number;
-  accuracy: number;
-  confusion_matrix: { TP: number; FP: number; FN: number; TN: number };
-};
 
 export default function ExamResultPage({
   params,
@@ -51,8 +45,6 @@ export default function ExamResultPage({
   const [aiChecked, setAIChecked] = useState(false);
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [confirmIssueAllOpen, setConfirmIssueAllOpen] = useState(false);
-  const [evalMetrics, setEvalMetrics] = useState<EvalMetrics | null>(null);
-  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
 
   // 🔹 Load dữ liệu ca thi
   useEffect(() => {
@@ -139,7 +131,7 @@ export default function ExamResultPage({
       if (res.ok) {
         setRenderedList((prev) => [...prev, { ...data, name: r.user.name }]);
         toast.success(`✅ Đã tạo chứng chỉ cho ${r.user.name}`);
-      } else toast.error(data.error || "❌ Không thể tạo chứng chỉ");
+      } else toast.error(data.error || data.code || "❌ Không thể tạo chứng chỉ");
     } catch (err) {
       console.error(err);
       toast.error("Lỗi khi render chứng chỉ");
@@ -301,21 +293,7 @@ export default function ExamResultPage({
         toast.warning("⚠️ Có chứng chỉ nghi trùng hoặc trùng lặp. Vui lòng kiểm tra.");
       }
 
-      try {
-        const evalRes = await fetch("http://localhost:8001/api/evaluate/dedup", { method: "POST" });
-        const evalJson = await evalRes.json().catch(() => ({}));
-        if (evalRes.ok && evalJson?.evaluation_metrics) {
-          setEvalMetrics(evalJson.evaluation_metrics as EvalMetrics);
-          const url = evalJson?.heatmap_url || null;
-          setHeatmapUrl(url ? (String(url).startsWith('http') ? url : `http://localhost:8001${url}`) : null);
-        } else {
-          setEvalMetrics(null);
-          setHeatmapUrl(null);
-        }
-      } catch {
-        setEvalMetrics(null);
-        setHeatmapUrl(null);
-      }
+      
 
     } catch (err) {
       console.error("AI check failed:", err);
@@ -339,7 +317,7 @@ export default function ExamResultPage({
   const scoreStep = isTinhoc ? 0.1 : 1;
 
   return (
-    <div className="p-6 space-y-4 bg-[#111318] text-white">
+    <div className="p-6 space-y-4 bg-white text-slate-900">
       <h1 className="text-2xl font-semibold">Nhập điểm thi khóa học: {title}</h1>
 
       <div className="flex justify-end gap-3 mb-3">
@@ -357,22 +335,22 @@ export default function ExamResultPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-white/70 mt-4">❌ Hiện chưa có học viên nào.</p>
+        <p className="text-slate-500 mt-4">❌ Hiện chưa có học viên nào.</p>
       ) : (
-        <div className="border border-[#3b4354] rounded-2xl overflow-x-auto scroll-dark">
-        <table className="min-w-full text-sm bg-[#1c1f27] text-white rounded-2xl overflow-hidden">
-          <thead className="bg-[#282d39]">
+        <div className="border border-slate-200 rounded-2xl overflow-x-auto">
+        <table className="min-w-full text-sm bg-white text-slate-900 rounded-2xl overflow-hidden">
+          <thead className="bg-slate-100">
             <tr>
-              <th className="p-3 text-left text-[#9da6b9]">Học viên</th>
-              <th className="p-3 text-left text-[#9da6b9]">Ngày sinh</th>
-              <th className="p-3 text-left text-[#9da6b9]">Điểm</th>
-              <th className="p-3 text-left text-[#9da6b9]">Trạng thái</th>
-              <th className="p-3 text-left text-[#9da6b9]">Hành động</th>
+              <th className="p-3 text-left text-slate-600">Học viên</th>
+              <th className="p-3 text-left text-slate-600">Ngày sinh</th>
+              <th className="p-3 text-left text-slate-600">Điểm</th>
+              <th className="p-3 text-left text-slate-600">Trạng thái</th>
+              <th className="p-3 text-left text-slate-600">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.examResultId} className="border-t border-[#3b4354] hover:bg-[#272b33]">
+              <tr key={r.examResultId} className="border-t border-slate-200 hover:bg-slate-50">
                 <td className="p-3">{r.user.name}</td>
                 <td className="p-3">
                   {r.user.dob
@@ -386,7 +364,7 @@ export default function ExamResultPage({
                     min={0}
                     max={scoreMax}
                     step={scoreStep}
-                    className="border border-[#3b4354] bg-[#12151b] text-white rounded px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    className="border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     disabled={r.locked}
                     onBlur={(e) =>
                       handleSave(r.examResultId, Number(e.target.value))
@@ -394,21 +372,21 @@ export default function ExamResultPage({
                   />
                 </td>
                 <td className="p-3">
-                  {r.status === "PASS" && <span className="text-emerald-300">PASS</span>}
-                  {r.status === "FAIL" && <span className="text-red-300">FAIL</span>}
-                  {r.status === "PENDING" && <span className="text-white/70">Đang chờ</span>}
+                  {r.status === "PASS" && <span className="text-emerald-600">PASS</span>}
+                  {r.status === "FAIL" && <span className="text-red-600">FAIL</span>}
+                  {r.status === "PENDING" && <span className="text-slate-500">Đang chờ</span>}
                   {r.certificate?.id ? (
-                    <span className="ml-2 text-xs rounded px-2 py-0.5 bg-indigo-900/30 text-indigo-300 border border-indigo-500/40">Đã cấp chứng chỉ</span>
+                    <span className="ml-2 text-xs rounded px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200">Đã cấp chứng chỉ</span>
                   ) : null}
                 </td>
                 <td className="p-3 space-x-2">
                   {r.locked ? (
-                    <span className="text-white/50 text-sm">Đã khóa</span>
+                    <span className="text-slate-500 text-sm">Đã khóa</span>
                   ) : (
                     <>
                        {/* autosave onBlur đã áp dụng; không cần nút Lưu */}
                        {r.status === "PASS" && (
-                         <Button variant="outline" onClick={() => handleRenderOne(r)} className="border-[#3b4354] text-white hover:bg-[#232734]">
+                         <Button variant="outline" onClick={() => handleRenderOne(r)} className="border-slate-300 text-slate-900 hover:bg-slate-100">
                            Tạo chứng chỉ
                          </Button>
                        )}
@@ -438,7 +416,11 @@ export default function ExamResultPage({
                               if (!res.ok) {
                                 return toast.error(`❌ ${r.user.name}: thất bại (${payload?.error || "Lỗi"})`);
                               }
-                              toast.success(`✅ ${r.user.name} đã cấp (#${payload.tokenId})`);
+                              if (payload?.reused) {
+                                toast.info(`ℹ️ ${r.user.name}: đã cấp trước đó — dùng token cũ (#${payload.tokenId})`);
+                              } else {
+                                toast.success(`✅ ${r.user.name}: cấp thành công (#${payload.tokenId})`);
+                              }
                             } catch (err) {
                               console.error(err);
                               toast.error("❌ Cấp chứng chỉ thất bại");
@@ -460,8 +442,8 @@ export default function ExamResultPage({
 
       {/* Danh sách chứng chỉ render */}
       {renderedList.length > 0 && (
-        <div className="mt-6 p-4 bg-[#12151b] border border-[#3b4354] rounded">
-          <h3 className="font-semibold mb-3 text-white">📄 Danh sách chứng chỉ đã render:</h3>
+        <div className="mt-6 p-4 bg-white border border-slate-200 rounded">
+          <h3 className="font-semibold mb-3">📄 Danh sách chứng chỉ đã render:</h3>
 
           {renderedList.map((c, i) => {
             const pdfBlob = c.pdf?.base64
@@ -483,37 +465,54 @@ export default function ExamResultPage({
             return (
               <div
                 key={i}
-                className={`border rounded p-3 mb-2 text-white ${
+                className={`border rounded p-3 mb-2 ${
                   aiMatch
                     ? aiMatch.status === "unique"
-                      ? "border-emerald-500 bg-emerald-900/20"
-                      : "border-yellow-500 bg-yellow-900/20"
-                    : "border-[#3b4354] bg-[#1c1f27]"
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-amber-200 bg-amber-50"
+                    : "border-slate-200 bg-white"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium text-white">{i + 1}. {c.name}</p>
-                    <code className="text-sm text-indigo-300">
+                    <p className="font-medium">{i + 1}. {c.name}</p>
+                    <code className="text-sm text-indigo-700">
                       {c.preIssueHash?.slice(0, 16)}...
                     </code>
                         {aiMatch ? (
-                          <p className="text-sm mt-1 text-white/80">
-                            🧠 Kết quả AI (DB):
-                            <b className="ml-1">{aiMatch.status}</b> – 
-                            {Math.round((aiMatch.similarityScore ?? 0) * 100)}%
-                          </p>
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border
+                                  ${aiMatch.status === "unique" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                    aiMatch.status === "duplicate" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                    "bg-amber-50 text-amber-700 border-amber-200"}`}
+                              >
+                                {aiMatch.status === "unique" && <CheckCircle2 className="h-3 w-3" />}
+                                {aiMatch.status === "duplicate" && <Copy className="h-3 w-3" />}
+                                {aiMatch.status === "suspected_copy" && <AlertTriangle className="h-3 w-3" />}
+                                {aiMatch.status === "unique" ? "Không trùng lặp" : aiMatch.status === "duplicate" ? "Trùng lặp" : "Nghi sao chép"}
+                              </span>
+                              <span className="text-xs text-slate-700">
+                                Độ tương đồng: {Math.min(100, Math.max(0, Math.round((aiMatch.similarityScore ?? 0) * 100)))}%
+                              </span>
+                            </div>
+                            <div className="mt-2 h-2 w-full rounded bg-slate-200">
+                              <div
+                                className={`h-2 rounded ${aiMatch.status === "unique" ? "bg-emerald-500" : aiMatch.status === "duplicate" ? "bg-rose-500" : "bg-amber-500"}`}
+                                style={{ width: `${Math.min(100, Math.max(0, Math.round((aiMatch.similarityScore ?? 0) * 100)))}%` }}
+                              />
+                            </div>
+                          </div>
                         ) : (
-                          <p className="text-sm mt-1 text-white/50">
-                            (Chưa có kết quả AI trong DB)
-                          </p>
+                          <p className="text-sm mt-1 text-slate-500">(Chưa có kết quả AI trong DB)</p>
                         )}
 
 
                   </div>
                   {pdfBlob ? (
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => window.open(pdfBlob, "_blank")}> 
+                      <Button variant="outline" onClick={() => window.open(pdfBlob, "_blank")} className="border-slate-300 text-slate-900 hover:bg-slate-100"> 
                         Xem
                       </Button>
                       {aiMatch && aiMatch.status === "unique" ? (
@@ -542,6 +541,8 @@ export default function ExamResultPage({
                               const payload = await res.json();
                               if (!res.ok) {
                                 toast.error(`❌ ${name}: thất bại (${payload?.error || "Lỗi"})`);
+                              } else if (payload?.reused) {
+                                toast.info(`ℹ️ ${name}: đã cấp trước đó — dùng token cũ (#${payload.tokenId})`);
                               } else {
                                 toast.success(`✅ ${name}: cấp thành công (#${payload.tokenId})`);
                               }
@@ -557,13 +558,13 @@ export default function ExamResultPage({
                       <a
                         href={pdfBlob}
                         download={`${c.name}_certificate.pdf`}
-                        className="px-3 py-2 border border-[#3b4354] rounded text-sm text-indigo-300 hover:bg-[#232734]"
+                        className="px-3 py-2 border border-slate-300 rounded text-sm text-indigo-700 hover:bg-slate-100"
                       >
                         Tải
                       </a>
                     </div>
                   ) : (
-                    <span className="text-white/50 text-sm">Không có PDF</span>
+                    <span className="text-slate-500 text-sm">Không có PDF</span>
                   )}
                 </div>
               </div>
@@ -574,31 +575,13 @@ export default function ExamResultPage({
             <Button onClick={handleDownloadAll} className="bg-gradient-to-r from-emerald-600 to-lime-600 text-white">
               Tải xuống tất cả
             </Button>
-            <Button variant="outline" onClick={handleAICheck} className="border-[#3b4354] text-white hover:bg-[#232734]">
+            <Button variant="outline" onClick={handleAICheck} className="border-slate-300 text-slate-900 hover:bg-slate-100">
               Kiểm tra trùng lặp (AI)
             </Button>
 
           </div>
 
-          {evalMetrics && (
-            <div className="mt-6 p-4 bg-[#12151b] border border-[#3b4354] rounded">
-              <h3 className="font-semibold mb-2 text-white">🧪 Đánh giá thuật toán (mô phỏng)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-white/90">
-                <div>Điểm F1: <b>{evalMetrics.f1_score}%</b></div>
-                <div>Độ chính xác (Precision): <b>{evalMetrics.precision}%</b></div>
-                <div>Độ bao phủ (Recall): <b>{evalMetrics.recall}%</b></div>
-                <div>Độ đúng (Accuracy): <b>{evalMetrics.accuracy}%</b></div>
-              </div>
-              <div className="mt-2 text-sm text-white/80">
-                Ma trận nhầm lẫn — Đúng trùng (TP): {evalMetrics.confusion_matrix.TP}, Báo trùng nhầm (FP): {evalMetrics.confusion_matrix.FP}, Bỏ sót trùng (FN): {evalMetrics.confusion_matrix.FN}, Đúng không trùng (TN): {evalMetrics.confusion_matrix.TN}
-              </div>
-              {heatmapUrl && (
-                <div className="mt-3">
-                  <img src={heatmapUrl} alt="Ma trận nhầm lẫn" className="max-w-full h-auto border rounded" />
-                </div>
-              )}
-            </div>
-          )}
+          
 
           {aiResults.length > 0 &&
 aiResults.every((r) => r.status === "unique")
@@ -687,7 +670,11 @@ aiResults.every((r) => r.status === "unique")
                     const payload = await res.json();
                     if (res.ok) {
                       minted.push({ name, tokenId: payload.tokenId });
-                      toast.success(`✅ ${name} đã cấp (#${payload.tokenId})`);
+                      if (payload?.reused) {
+                        toast.info(`ℹ️ ${name}: đã cấp trước đó — dùng token cũ (#${payload.tokenId})`);
+                      } else {
+                        toast.success(`✅ ${name}: cấp thành công (#${payload.tokenId})`);
+                      }
                     } else {
                       failed.push({ name, reason: payload?.error || "ISSUE_FINAL_FAILED" });
                       toast.error(`❌ ${name} thất bại (${payload?.error || "Lỗi"})`);

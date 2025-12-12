@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Branch } from '@/lib/branchStore'
 import { Building2 } from 'lucide-react'
@@ -15,6 +15,39 @@ export default function AdminBranchesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setForm({ ...form, address: value })
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+
+    if (value.length > 2) {
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5`)
+          const data = await res.json()
+          setSearchResults(data)
+        } catch {
+          setSearchResults([])
+        }
+      }, 500)
+    } else {
+      setSearchResults([])
+    }
+  }
+
+  const selectAddress = (item: any) => {
+    setForm({
+      ...form,
+      address: item.display_name,
+      latitude: parseFloat(item.lat),
+      longitude: parseFloat(item.lon)
+    })
+    setSearchResults([])
+  }
 
   const load = async () => {
     setLoading(true)
@@ -77,55 +110,85 @@ export default function AdminBranchesPage() {
   }
 
   return (
-    <main className="p-6 bg-[#111318] text-white min-h-[calc(100vh-64px)]">
+    <main className="p-6 md:p-8 bg-[#F7F8FA] text-slate-800 min-h-[calc(100vh-44px)]">
       <div className="space-y-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl font-semibold inline-flex items-center gap-2"><Building2 className="h-5 w-5" />Quản lý chi nhánh</h1>
-        {error && <div className="text-red-400 text-sm">{error}</div>}
+        <h1 className="text-2xl md:text-3xl font-semibold inline-flex items-center gap-2 text-slate-900"><Building2 className="h-5 w-5" />Quản lý chi nhánh</h1>
+        {error && <div className="text-red-600 text-sm">{error}</div>}
 
-        <Card variant="dark" className="p-4 space-y-3 border-[#3b4354]">
+        <Card className="p-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="ID" value={form.id ?? ''} onChange={(e) => setForm({ ...form, id: e.target.value })} />
-            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Tên chi nhánh" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Input className="md:col-span-2 border border-[#3b4354] bg-[#12151b] text-white" placeholder="Địa chỉ" value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Latitude" type="number" value={form.latitude ?? 0} onChange={(e) => setForm({ ...form, latitude: Number(e.target.value) })} />
-            <Input className="border border-[#3b4354] bg-[#12151b] text-white" placeholder="Longitude" type="number" value={form.longitude ?? 0} onChange={(e) => setForm({ ...form, longitude: Number(e.target.value) })} />
+            <Input className="md:col-span-2" placeholder="Tên chi nhánh" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <div className="md:col-span-2 relative">
+              <Input 
+                placeholder="Nhập địa chỉ để tìm kiếm..." 
+                value={form.address ?? ''} 
+                onChange={handleAddressChange} 
+              />
+              {searchResults.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-md mt-1 max-h-60 overflow-auto shadow-md">
+                  {searchResults.map((item, i) => (
+                    <li 
+                      key={i} 
+                      className="p-2 hover:bg-slate-100 cursor-pointer text-sm text-slate-700"
+                      onClick={() => selectAddress(item)}
+                    >
+                      {item.display_name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <Input 
+              placeholder="Latitude" 
+              type="number" 
+              value={form.latitude ?? 0} 
+              readOnly 
+            />
+            <Input 
+              placeholder="Longitude" 
+              type="number" 
+              value={form.longitude ?? 0} 
+              readOnly 
+            />
           </div>
           <div className="flex gap-2">
-            <Button onClick={submit} disabled={loading} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">{editingId ? 'Cập nhật' : 'Thêm mới'}</Button>
-            <Button variant="outline" className="border-[#3b4354] text-white" onClick={resetForm}>Làm mới</Button>
+            <Button onClick={submit} disabled={loading}>{editingId ? 'Cập nhật' : 'Thêm mới'}</Button>
+            <Button variant="outline" onClick={resetForm}>Làm mới</Button>
           </div>
         </Card>
 
-        <Card variant="dark" className="border-[#3b4354]">
-          <table className="min-w-full text-sm bg-[#1c1f27] text-white">
-            <thead>
-              <tr className="bg-[#232734]">
-                <th className="text-left p-3 border-b border-[#3b4354]">ID</th>
-                <th className="text-left p-3 border-b border-[#3b4354]">Tên</th>
-                <th className="text-left p-3 border-b border-[#3b4354]">Địa chỉ</th>
-                <th className="text-left p-3 border-b border-[#3b4354]">Lat</th>
-                <th className="text-left p-3 border-b border-[#3b4354]">Lng</th>
-                <th className="text-left p-3 border-b border-[#3b4354]">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((b) => (
-                <tr key={b.id} className="border-t border-[#2b3040] hover:bg-[#242833]">
-                  <td className="p-3">{b.id}</td>
-                  <td className="p-3">{b.name}</td>
-                  <td className="p-3 text-[#9da6b9]">{b.address}</td>
-                  <td className="p-3 text-[#9da6b9]">{b.latitude}</td>
-                  <td className="p-3 text-[#9da6b9]">{b.longitude}</td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <Button variant="outline" className="border-[#3b4354] text-white" onClick={() => { setForm(b); setEditingId(b.id) }}>Sửa</Button>
-                      <Button variant="destructive" onClick={() => remove(b.id)}>Xóa</Button>
-                    </div>
-                  </td>
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-2">ID</th>
+                  <th className="text-left px-4 py-2">Tên</th>
+                  <th className="text-left px-4 py-2">Địa chỉ</th>
+                  <th className="text-left px-4 py-2">Lat</th>
+                  <th className="text-left px-4 py-2">Lng</th>
+                  <th className="text-left px-4 py-2">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((b) => (
+                  <tr key={b.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2">{b.id}</td>
+                    <td className="px-4 py-2">{b.name}</td>
+                    <td className="px-4 py-2 text-slate-600">{b.address}</td>
+                    <td className="px-4 py-2 text-slate-600">{b.latitude}</td>
+                    <td className="px-4 py-2 text-slate-600">{b.longitude}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => { setForm(b); setEditingId(b.id) }}>Sửa</Button>
+                        <Button variant="destructive" onClick={() => remove(b.id)}>Xóa</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       </div>
     </main>

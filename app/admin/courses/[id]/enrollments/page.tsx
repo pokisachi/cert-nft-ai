@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogDescription } from '@/components/ui/alert-dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { CalendarDays } from 'lucide-react';
 
 // ============================
@@ -79,7 +80,7 @@ function SlotList({ slots }: { slots: string[] }) {
     <div className="space-y-1">
       <div className="flex flex-wrap gap-1">
         {sorted.map((slot) => (
-          <span key={slot} className="px-2 py-1 text-xs border rounded bg-indigo-900/30 text-indigo-300 border-indigo-500/40 whitespace-nowrap">
+          <span key={slot} className="px-2 py-1 text-xs border rounded bg-indigo-50 text-indigo-700 border-indigo-200 whitespace-nowrap">
             {parseSlotLabel(slot)}
           </span>
         ))}
@@ -102,10 +103,10 @@ function StudentList({ students }: { students: any[] }) {
     <div className="space-y-0.5">
       {sorted.map((enr: any, i: number) => (
         <div key={i} className="text-sm">
-          {enr.learner?.name || '—'} <span className="text-white/60">({enr.learner?.email || '—'})</span>
+          {enr.learner?.name || '—'} <span className="text-slate-600">({enr.learner?.email || '—'})</span>
         </div>
       ))}
-      <div className="text-xs text-white/60 mt-1">Tổng: {students.length} HV</div>
+      <div className="text-xs text-slate-600 mt-1">Tổng: {students.length} HV</div>
     </div>
   );
 }
@@ -128,6 +129,7 @@ export default function CourseEnrollmentsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmRunOpen, setConfirmRunOpen] = useState(false);
   const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
+  const [notice, setNotice] = useState<any>(null);
 
   // 🔹 Lấy tên khóa học
   useEffect(() => {
@@ -188,6 +190,21 @@ const handleRunScheduler = async () => {
     
     const result = await res.json();
 
+    if (!res.ok) {
+      setSchedulePreview(null);
+      setRunMeta(null);
+      setPreviewOpen(false);
+      setNotice({ ...result, status: res.status });
+      if (res.status === 409) {
+        toast.warning(result.error || 'Một số học viên đã có lịch trong khoá này');
+      } else if (res.status === 400) {
+        toast.warning(result.error || 'Không thể chạy xếp lịch');
+      } else {
+        toast.error(result.error || 'Lỗi khi gọi AI Scheduler');
+      }
+      return;
+    }
+
     // ✅ DEBUG: Log để kiểm tra
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📥 API Response:', result);
@@ -200,6 +217,8 @@ const handleRunScheduler = async () => {
       // ✅ FIXED: Chỉ lưu result.data vào state
       setSchedulePreview(result.data);
       setRunMeta(result.meta ?? null);
+      const assignedCount = Array.isArray(result.data?.scheduledClasses) ? result.data.scheduledClasses.length : 0;
+      toast.info(`Đã xếp ${assignedCount} lớp cho giảng viên và phòng cụ thể. Vui lòng kiểm tra và xác nhận.`);
       toast.success(result.message || 'Đã tạo lịch học thành công');
       setPreviewOpen(true);
 
@@ -207,6 +226,7 @@ const handleRunScheduler = async () => {
       console.log('   Classes:', result.data.scheduledClasses?.length);
       console.log('   Enrollments:', result.data.scheduledEnrollments?.length);
     } else {
+      setNotice({ error: result.error || 'Lỗi khi tạo lịch', status: 500 });
       toast.error(result.error || 'Lỗi khi tạo lịch');
       console.error('❌ API Error:', result.error);
     }
@@ -358,10 +378,10 @@ const handleRunScheduler = async () => {
   // JSX render
   // ============================
   return (
-    <div className="p-6 space-y-6 bg-[#111318] text-white">
+    <div className="p-6 space-y-6 bg-white text-slate-900">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
-          Ghi danh khóa học: <span className="text-white">{courseTitle}</span>
+          Ghi danh khóa học: <span className="text-slate-900">{courseTitle}</span>
         </h1>
         <div className="flex gap-3">
           <button onClick={() => setConfirmRunOpen(true)} disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
@@ -370,14 +390,41 @@ const handleRunScheduler = async () => {
         </div>
       </div>
 
+      {notice && (
+        <Alert className="border border-amber-200 bg-amber-50 text-amber-900">
+          <AlertTitle>{notice.error || 'Thông báo'}</AlertTitle>
+          <AlertDescription>
+            {notice.hint && (
+              <div className="mt-1 text-sm">{notice.hint}</div>
+            )}
+            {Array.isArray(notice.learners) && notice.learners.length > 0 && (
+              <div className="mt-2">
+                <div className="text-sm">Danh sách học viên đã có lịch ({notice.count ?? notice.learners.length}):</div>
+                <ul className="mt-1 list-disc pl-5 text-sm">
+                  {notice.learners.slice(0, 10).map((it: any, idx: number) => (
+                    <li key={idx}>{(it.learner?.name || '—')} {(it.learner?.email ? `(${it.learner.email})` : '')}</li>
+                  ))}
+                </ul>
+                {notice.learners.length > 10 && (
+                  <div className="text-xs text-slate-600">… và {notice.learners.length - 10} học viên khác</div>
+                )}
+              </div>
+            )}
+            <div className="mt-3">
+              <button onClick={() => setNotice(null)} className="px-3 py-1 text-xs rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-100">Ẩn thông báo</button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <AlertDialog open={confirmRunOpen} onOpenChange={setConfirmRunOpen}>
-        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+        <AlertDialogContent variant="light" className="max-w-md w-[92vw]">
           <AlertDialogHeader>
             <AlertDialogTitle>Chạy AI Scheduler</AlertDialogTitle>
             <AlertDialogDescription>Khóa "{courseTitle}". Tiếp tục chạy?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+            <AlertDialogCancel className="px-4 py-2 rounded border border-slate-300 bg-white text-slate-900 hover:bg-slate-100">Hủy</AlertDialogCancel>
             <AlertDialogAction asChild>
               <button
                 onClick={() => {
@@ -395,29 +442,35 @@ const handleRunScheduler = async () => {
       </AlertDialog>
 
       <AlertDialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <AlertDialogContent variant="dark" className="max-w-5xl w-[96vw] max-h-[80vh] overflow-y-auto overscroll-contain scroll-dark">
+        <AlertDialogContent variant="light" className="max-w-5xl w-[96vw] max-h-[80vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-semibold">
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-cyan-300">Kết quả AI Scheduler</span>
             </AlertDialogTitle>
           </AlertDialogHeader>
+          <AlertDialogDescription>
+            Kết quả chạy AI Scheduler cho khoá học. Hệ thống hiển thị giảng viên và phòng đã được xếp. Vui lòng kiểm tra và xác nhận để lưu.
+          </AlertDialogDescription>
           {runMeta && (
             <div className="mt-1 mb-4 flex flex-wrap items-center gap-2 text-xs">
-              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{runMeta.totalClasses} lớp</span>
-              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{runMeta.totalEnrollments} ghi danh</span>
-              <span className="px-2 py-1 rounded-full bg-[#232734] text-white/80 border border-[#3b4354]">{new Date(runMeta.generatedAt).toLocaleString()}</span>
+              <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">{runMeta.totalClasses} lớp</span>
+              <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">{runMeta.totalEnrollments} ghi danh</span>
+              <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">{new Date(runMeta.generatedAt).toLocaleString()}</span>
             </div>
           )}
-          {schedulePreview?.convergenceChartBase64 && (
-            <div className="mb-4">
-              <div className="text-sm text-white/70 mb-2 flex items-center gap-2"><CalendarDays className="h-4 w-4" />Biểu đồ hội tụ GA</div>
-              <img
-                src={`data:image/png;base64,${schedulePreview.convergenceChartBase64}`}
-                alt="GA convergence chart"
-                className="w-full max-h-[360px] object-contain rounded-lg border border-[#3b4354] bg-[#12151b]"
-              />
-            </div>
+          {groupedSchedules.length > 0 && (
+            <Alert className="mb-4">
+              <AlertTitle>Đã xếp lịch</AlertTitle>
+              <AlertDescription>
+                {groupedSchedules.map((g: any, i: number) => (
+                  <span key={i} className="text-sm block">
+                    {(g.teacherName || g.teacherId || '—').toString()} — Phòng {g.roomId}
+                  </span>
+                ))}
+              </AlertDescription>
+            </Alert>
           )}
+          
           {!schedulePreview?.scheduledClasses?.length && schedulePreview?.diagnostics && (
             <div className="mb-4 text-sm text-white/80">
               <div className="font-semibold mb-1">Chưa có đề xuất lịch hợp lệ.</div>
@@ -433,17 +486,17 @@ const handleRunScheduler = async () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
               {groupedSchedules.length > 0 ? (
                 groupedSchedules.map((group: any, idx: number) => (
-                  <div key={idx} className="h-full rounded-xl border border-[#3b4354] bg-[#12151b] p-4 space-y-3 flex flex-col">
+                  <div key={idx} className="h-full rounded-xl border border-slate-200 bg-white p-4 space-y-3 flex flex-col">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-indigo-600/20 ring-1 ring-indigo-500/40 flex items-center justify-center text-indigo-300">
+                        <div className="h-9 w-9 rounded-full bg-indigo-100 ring-1 ring-indigo-200 flex items-center justify-center text-indigo-700">
                           {(group.teacherName || group.teacherId || '?').toString().slice(0,1).toUpperCase()}
                         </div>
-                        <div className="font-semibold text-white">{group.teacherName || group.teacherId}</div>
+                        <div className="font-semibold">{group.teacherName || group.teacherId}</div>
                       </div>
                     </div>
-                    <div className="text-xs text-white/70">Phòng {group.roomId}</div>
-                    <div className="text-xs text-white/70">
+                    <div className="text-xs text-slate-700">Phòng {group.roomId}</div>
+                    <div className="text-xs text-slate-700">
                       {group.startDate} → {group.endDate}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -452,7 +505,7 @@ const handleRunScheduler = async () => {
                         const dayLabel = DAY_LABELS[slot.dayOfWeek] || slot.dayOfWeek || '—';
                         const timeLabel = TIME_LABELS[slot.timeSlot] || slot.timeSlot || '—';
                         return (
-                          <span key={key} className="px-2 py-0.5 text-xs rounded border border-[#3b4354] bg-[#232734] text-white/80">
+                          <span key={key} className="px-2 py-0.5 text-xs rounded border border-slate-300 bg-slate-100 text-slate-700">
                             {dayLabel} — {timeLabel}
                           </span>
                         );
@@ -464,7 +517,7 @@ const handleRunScheduler = async () => {
                   </div>
                 ))
               ) : (
-                <div className="text-center text-white/70 py-6 col-span-3">Chưa có đề xuất lịch hợp lệ.</div>
+                <div className="text-center text-slate-600 py-6 col-span-3">Chưa có đề xuất lịch hợp lệ.</div>
               )}
           </div>
           <AlertDialogFooter>
@@ -477,13 +530,13 @@ const handleRunScheduler = async () => {
       </AlertDialog>
 
       <AlertDialog open={confirmSaveOpen} onOpenChange={setConfirmSaveOpen}>
-        <AlertDialogContent variant="dark" className="max-w-md w-[92vw]">
+        <AlertDialogContent variant="light" className="max-w-md w-[92vw]">
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận lưu lịch</AlertDialogTitle>
             <AlertDialogDescription>Lưu kết quả AI Scheduler vào CSDL?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="px-4 py-2 rounded bg-[#282d39] text-white">Hủy</AlertDialogCancel>
+            <AlertDialogCancel className="px-4 py-2 rounded border border-slate-300 bg-white text-slate-900 hover:bg-slate-100">Hủy</AlertDialogCancel>
             <AlertDialogAction asChild>
               <button
                 onClick={() => {
@@ -502,39 +555,39 @@ const handleRunScheduler = async () => {
 
 
       {/* 📄 Danh sách ghi danh */}
-      <div className="border border-[#3b4354] rounded-2xl overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-[#282d39]">
+      <div className="border border-slate-200 rounded-2xl overflow-x-auto">
+        <table className="min-w-full text-sm bg-white text-slate-900">
+          <thead className="bg-slate-100">
             <tr>
-              <th className="text-left p-3 text-[#9da6b9]">STT</th>
-              <th className="text-left p-3 text-[#9da6b9]">Họ tên</th>
-              <th className="text-left p-3 text-[#9da6b9]">Email</th>
-              <th className="text-left p-3 text-[#9da6b9]">Ca học đã chọn</th>
-              <th className="text-left p-3 text-[#9da6b9]">Trạng thái</th>
-              <th className="text-left p-3 text-[#9da6b9]">Ngày ghi danh</th>
+              <th className="text-left p-3 text-slate-600">STT</th>
+              <th className="text-left p-3 text-slate-600">Họ tên</th>
+              <th className="text-left p-3 text-slate-600">Email</th>
+              <th className="text-left p-3 text-slate-600">Ca học đã chọn</th>
+              <th className="text-left p-3 text-slate-600">Trạng thái</th>
+              <th className="text-left p-3 text-slate-600">Ngày ghi danh</th>
             </tr>
           </thead>
-          <tbody className="bg-[#1c1f27]">
+          <tbody className="bg-white">
             {loading ? (
               <tr><td colSpan={5} className="p-3">Đang tải...</td></tr>
             ) : err ? (
               <tr><td colSpan={6} className="p-3 text-red-400">Lỗi: {err}</td></tr>
             ) : (
               resp?.data?.map((r, i) => (
-                <tr key={r.enrollmentId} className="border-t border-[#3b4354] hover:bg-[#272b33]">
-                  <td className="p-3 text-white/80">{(page - 1) * pageSize + i + 1}</td>
-                  <td className="p-3 text-white">{r.learner.name ?? '—'}</td>
-                  <td className="p-3 text-white">{r.learner.email}</td>
+                <tr key={r.enrollmentId} className="border-t border-slate-200 hover:bg-slate-50">
+                  <td className="p-3 text-slate-700">{(page - 1) * pageSize + i + 1}</td>
+                  <td className="p-3">{r.learner.name ?? '—'}</td>
+                  <td className="p-3">{r.learner.email}</td>
                   <td className="p-3"><SlotList slots={r.availableSlots} /></td>
                   <td className="p-3">
                     <span className={`text-xs rounded px-2 py-1 border ${
-                      r.status === 'ACTIVE' ? 'bg-emerald-900/30 text-emerald-300 border-emerald-500/40' :
-                      r.status === 'COMPLETED' ? 'bg-slate-800/60 text-slate-300 border-slate-600/40' :
-                      r.status === 'CANCELED' ? 'bg-red-900/30 text-red-300 border-red-600/40' :
-                      'bg-indigo-900/30 text-indigo-300 border-indigo-500/40'
+                      r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      r.status === 'COMPLETED' ? 'bg-slate-100 text-slate-700 border-slate-300' :
+                      r.status === 'CANCELED' ? 'bg-red-50 text-red-700 border-red-200' :
+                      'bg-indigo-50 text-indigo-700 border-indigo-200'
                     }`}>{r.status}</span>
                   </td>
-                  <td className="p-3 text-white/80">{new Date(r.createdAt).toLocaleString()}</td>
+                  <td className="p-3 text-slate-700">{new Date(r.createdAt).toLocaleString()}</td>
                 </tr>
               ))
             )}

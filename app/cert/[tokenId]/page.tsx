@@ -64,6 +64,8 @@ export default function CertDetailPage({
     })();
   }, [data, contract]);
 
+  
+
   if (!data) return <p className="p-6 bg-[#111318] text-white">Đang tải...</p>;
 
   const issueDate = new Date(data.issuedAt).toLocaleDateString("vi-VN");
@@ -271,6 +273,8 @@ const downloadCertificate = () => {
                 </div>
               )}
             </section>
+
+        
             {data.revoked && (
               <section className="bg-red-900/20 p-5 rounded-2xl border border-red-700/40">
                 <p className="text-sm text-red-300">Chứng chỉ này đã bị thu hồi. Nội dung PDF/in ấn bị vô hiệu để tránh sử dụng sai mục đích. Chủ sở hữu vẫn có thể xem lịch sử giao dịch on-chain.</p>

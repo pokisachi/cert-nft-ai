@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -16,7 +18,17 @@ except ImportError:
     # When running inside ai_search_service directory (module main)
     from config import ASYNC_DATABASE_URL, ALLOW_ORIGINS, SIMILARITY_THRESHOLD
 
+try:
+    from ai_search_service.tests.retrieval_evaluation import evaluate_retrieval
+except ImportError:
+    from tests.retrieval_evaluation import evaluate_retrieval
+
 app = FastAPI(title="AI Semantic Search Service")
+
+# Serve static directory for charts
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.on_event("startup")
 async def startup():
@@ -73,7 +85,22 @@ async def ai_search(query: str):
         if float(sims[i]) > SIMILARITY_THRESHOLD
     ]
     items.sort(key=lambda x: x["similarity_score"], reverse=True)
-    return items
+    metrics = evaluate_retrieval()
+    return {
+        "retrieval_metrics": metrics,
+        "results": items,
+    }
+
+@app.get("/api/evaluate/search")
+async def evaluate_search():
+    metrics = evaluate_retrieval()
+    return {
+        "status": "success",
+        "model_name": "all-MiniLM-L6-v2",
+        "evaluation_type": "Đánh giá truy hồi (Độ chính xác@K)",
+        "retrieval_metrics": metrics,
+        "chart_url": "/static/retrieval_comparison_chart.png",
+    }
 
 class AISearchPdfIn(BaseModel):
     pdfBase64: str

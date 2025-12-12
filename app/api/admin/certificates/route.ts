@@ -71,6 +71,7 @@ export async function GET(req: Request) {
   const latestByCert = new Map<string, { tx?: string | null; at?: string | null }>();
   for (const a of audits) {
     const k = a.entityId;
+    if (!k) continue;
     if (!latestByCert.has(k)) {
       const tx = (a.payload as any)?.revokeTxHash || null;
       latestByCert.set(k, { tx, at: a.createdAt?.toISOString?.() || null });

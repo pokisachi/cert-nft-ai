@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { ToastProviderWrapper } from "@/components/ui/use-toast"; // ✅ thêm Toast Provider
 
 export default function Providers({ children }: { children: ReactNode }) {
@@ -21,10 +21,58 @@ export default function Providers({ children }: { children: ReactNode }) {
       })
   );
 
+  useEffect(() => {
+    const onUnhandled = (e: PromiseRejectionEvent) => {
+      const r: any = e.reason
+      const msg = String(r?.message || r || '').toLowerCase()
+      const stack = String(r?.stack || '').toLowerCase()
+      if (msg.includes('payload') && stack.includes('givefreely.tsx')) {
+        e.preventDefault()
+        return
+      }
+    }
+    const onError = (ev: ErrorEvent) => {
+      const src = String(ev?.filename || '').toLowerCase()
+      const msg = String(ev?.message || '').toLowerCase()
+      if (src.includes('givefreely.tsx') || msg.includes('givefreely.tsx')) {
+        ev.preventDefault()
+        return
+      }
+    }
+    const origError = console.error
+    const origWarn = console.warn
+    const shouldFilter = (...args: any[]) => {
+      try {
+        for (const a of args) {
+          const s = String(a ?? '').toLowerCase()
+          if (s.includes('givefreely.tsx')) return true
+        }
+      } catch {}
+      return false
+    }
+    console.error = (...args: any[]) => {
+      if (shouldFilter(...args)) return
+      origError(...args)
+    }
+    console.warn = (...args: any[]) => {
+      if (shouldFilter(...args)) return
+      origWarn(...args)
+    }
+    window.addEventListener('unhandledrejection', onUnhandled)
+    window.addEventListener('error', onError)
+    return () => {
+      window.removeEventListener('unhandledrejection', onUnhandled)
+      window.removeEventListener('error', onError)
+      console.error = origError
+      console.warn = origWarn
+    }
+  }, [])
+
   return (
     <QueryClientProvider client={client}>
-      {/* ✅ Bọc toàn app trong ToastProviderWrapper để useToast hoạt động */}
-      <ToastProviderWrapper>{children}</ToastProviderWrapper>
+      <ToastProviderWrapper>
+        {children}
+      </ToastProviderWrapper>
     </QueryClientProvider>
   );
 }

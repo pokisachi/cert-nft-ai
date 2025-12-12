@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // 🧩 Lấy danh sách giảng viên
 export async function GET() {
   const teachers = await prisma.teacher.findMany({
@@ -18,7 +20,31 @@ export async function GET() {
     qualifications: t.qualifications.map((q) => q.qualification.name),
   }));
 
-  return NextResponse.json(formatted);
+  const teacherIds = teachers.map((t) => t.id);
+  const classes = await prisma.scheduledClass.findMany({
+    where: { teacherId: { in: teacherIds } },
+    select: { teacherId: true, dayOfWeek: true, timeSlot: true },
+  });
+  const usedMap = new Map<string, Set<string>>();
+  for (const c of classes) {
+    const key = c.teacherId;
+    const set = usedMap.get(key) || new Set<string>();
+    set.add(`${c.dayOfWeek}_${c.timeSlot}`);
+    usedMap.set(key, set);
+  }
+  const data = formatted.map((t) => {
+    const used = usedMap.get(t.id) || new Set<string>();
+    const usedSlots = Array.from(used);
+    const freeSlots = (t.availability || []).filter((s: string) => !used.has(s));
+    return {
+      ...t,
+      scheduledCount: usedSlots.length,
+      usedSlots,
+      freeSlots,
+    };
+  });
+
+  return NextResponse.json(data);
 }
 
 // 🧩 Tạo giảng viên mới

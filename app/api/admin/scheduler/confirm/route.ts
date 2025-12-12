@@ -22,11 +22,11 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { courseId, schedule } = body;
-    const { scheduledClasses, scheduledEnrollments } = schedule as {
-      scheduledClasses: ScheduledClassInput[];
-      scheduledEnrollments: ScheduledEnrollmentInput[];
-    };
+  const { courseId, schedule } = body;
+  const { scheduledClasses, scheduledEnrollments } = schedule as {
+    scheduledClasses: ScheduledClassInput[];
+    scheduledEnrollments: ScheduledEnrollmentInput[];
+  };
 
     if (!courseId || !scheduledClasses?.length) {
       return NextResponse.json({ error: 'Thiếu dữ liệu để lưu' }, { status: 400 });
@@ -63,17 +63,59 @@ export async function POST(req: Request) {
       classMap.set(idx + 1, c.id);
     });
 
-    // 🧮 Lưu ScheduledEnrollment
-    await prisma.$transaction(
-      scheduledEnrollments.map((e: ScheduledEnrollmentInput) =>
-        prisma.scheduledEnrollment.create({
-          data: {
-            scheduledClassId: classMap.get(e.scheduledClassId)!,
-            enrollmentId: e.enrollmentId,
-          },
-        })
-      )
-    );
+  // 🧮 Lưu ScheduledEnrollment
+  await prisma.$transaction(
+    scheduledEnrollments.map((e: ScheduledEnrollmentInput) =>
+      prisma.scheduledEnrollment.create({
+        data: {
+          scheduledClassId: classMap.get(e.scheduledClassId)!,
+          enrollmentId: e.enrollmentId,
+        },
+      })
+    )
+  );
+
+    const teacherSlotMap = new Map<string, Set<string>>();
+    const roomSlotMap = new Map<string, Set<string>>();
+    (scheduledClasses || []).forEach((c) => {
+      const slotId = `${c.dayOfWeek}_${c.timeSlot}`;
+      const tset = teacherSlotMap.get(c.teacherId) || new Set<string>();
+      tset.add(slotId);
+      teacherSlotMap.set(c.teacherId, tset);
+      const rset = roomSlotMap.get(c.roomId) || new Set<string>();
+      rset.add(slotId);
+      roomSlotMap.set(c.roomId, rset);
+    });
+
+    if (teacherSlotMap.size > 0) {
+      const impactedTeachers = await prisma.teacher.findMany({
+        where: { id: { in: Array.from(teacherSlotMap.keys()) } },
+        select: { id: true, availability: true },
+      });
+      const teacherUpdates = impactedTeachers.map((t) => {
+        const used = teacherSlotMap.get(t.id) || new Set<string>();
+        const next = (t.availability || []).filter((s) => !used.has(s));
+        return prisma.teacher.update({ where: { id: t.id }, data: { availability: next } });
+      });
+      if (teacherUpdates.length > 0) {
+        await prisma.$transaction(teacherUpdates);
+      }
+    }
+
+    if (roomSlotMap.size > 0) {
+      const impactedRooms = await prisma.room.findMany({
+        where: { id: { in: Array.from(roomSlotMap.keys()) } },
+        select: { id: true, availability: true },
+      });
+      const roomUpdates = impactedRooms.map((r) => {
+        const used = roomSlotMap.get(r.id) || new Set<string>();
+        const next = (r.availability || []).filter((s) => !used.has(s));
+        return prisma.room.update({ where: { id: r.id }, data: { availability: next } });
+      });
+      if (roomUpdates.length > 0) {
+        await prisma.$transaction(roomUpdates);
+      }
+    }
 
     const course = await prisma.course.findUnique({
       where: { id: Number(courseId) },
@@ -109,6 +151,16 @@ export async function POST(req: Request) {
           title: "Lịch học khoá đã được xác nhận",
           content: `Khoá ${course.title} đã được xếp lịch và lưu vào hệ thống.`,
           targetRole: "LEARNER",
+          courseId: course.id,
+          isPinned: false,
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          title: "Đã xếp lịch cho giảng viên và phòng",
+          content: `Khoá ${course.title}: lịch đã được xếp vào các giảng viên/phòng cụ thể. Vui lòng kiểm tra và xác nhận.`,
+          targetRole: "ADMIN",
           courseId: course.id,
           isPinned: false,
         },

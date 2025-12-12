@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { CheckCircle2, AlertTriangle, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CertificateCheckProps {
   certId: string;
@@ -19,14 +21,7 @@ export default function CertificateCheck({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [matched, setMatched] = useState<string[]>([]);
-  const [metrics, setMetrics] = useState<null | {
-    f1_score: number;
-    precision: number;
-    recall: number;
-    accuracy: number;
-    confusion_matrix: { TP: number; FP: number; FN: number; TN: number };
-  }>(null);
-  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
+  const [score, setScore] = useState<number | null>(null);
 
   const handleCheckDuplicate = async () => {
     setLoading(true);
@@ -57,30 +52,29 @@ export default function CertificateCheck({
       if (res.ok) {
         const status = data.results?.[0]?.status || 'error';
         const matches = data.results?.[0]?.matchedWith || [];
+        const similarity = data.results?.[0]?.similarityScore ?? null;
         setResult(status);
         setMatched(matches);
+        setScore(typeof similarity === 'number' ? similarity : null);
 
-        try {
-          const evalRes = await fetch('http://localhost:8001/api/evaluate/dedup', { method: 'POST' });
-          const evalData = await evalRes.json().catch(() => ({}));
-          if (evalRes.ok && evalData?.evaluation_metrics) {
-            setMetrics(evalData.evaluation_metrics);
-            const url = evalData?.heatmap_url || null;
-            setHeatmapUrl(url ? (String(url).startsWith('http') ? url : `http://localhost:8001${url}`) : null);
-          } else {
-            setMetrics(null);
-            setHeatmapUrl(null);
-          }
-        } catch {
-          setMetrics(null);
-          setHeatmapUrl(null);
+        if (status === 'unique') {
+          toast.success('✅ Kiểm tra trùng lặp: Không trùng lặp');
+        } else if (status === 'duplicate') {
+          const label = matches && Array.isArray(matches) && matches.length > 0 ? matches.join(', ') : 'Không rõ';
+          toast.warning(`⚠️ Kiểm tra trùng lặp: Có trùng lặp với ${label}`);
+        } else if (status === 'suspected_copy') {
+          toast.warning('⚠️ Kiểm tra trùng lặp: Nghi sao chép');
+        } else {
+          toast.error('❌ Kiểm tra trùng lặp thất bại');
         }
       } else {
         setResult('error');
+        toast.error('❌ Kiểm tra trùng lặp thất bại');
       }
     } catch (err) {
       console.error(err);
       setResult('error');
+      toast.error('❌ Không thể kết nối dịch vụ AI');
     } finally {
       setLoading(false);
     }
@@ -105,23 +99,50 @@ export default function CertificateCheck({
         </button>
       )}
 
-      {result === 'unique' && (
-        <div className="p-3 border rounded bg-green-50 text-green-800">
-          ✅ Chứng chỉ hợp lệ, không trùng lặp!
-          <div className="mt-3">
-            <button
-              onClick={handleMintNFT}
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-            >
-              Cấp chứng chỉ NFT
-            </button>
+      {result && (
+        <div className="p-4 border rounded bg-white text-slate-900">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border
+                  ${result === 'unique' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    result === 'duplicate' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                    result === 'suspected_copy' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                    'bg-slate-50 text-slate-700 border-slate-200'}`}
+              >
+                {result === 'unique' && <CheckCircle2 className="h-3 w-3" />}
+                {result === 'duplicate' && <Copy className="h-3 w-3" />}
+                {result === 'suspected_copy' && <AlertTriangle className="h-3 w-3" />}
+                {result === 'unique' ? 'Không trùng lặp' : result === 'duplicate' ? 'Trùng lặp' : result === 'suspected_copy' ? 'Nghi sao chép' : 'Lỗi'}
+              </span>
+              {score !== null && (
+                <span className="text-xs text-slate-700">
+                  Độ tương đồng: {Math.min(100, Math.max(0, Math.round(score * 100)))}%
+                </span>
+              )}
+            </div>
+            {result === 'unique' && (
+              <button
+                onClick={handleMintNFT}
+                className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+              >
+                Cấp chứng chỉ NFT
+              </button>
+            )}
           </div>
-        </div>
-      )}
-
-      {result === 'duplicate' && (
-        <div className="p-3 border rounded bg-yellow-50 text-yellow-800">
-          ⚠️ Phát hiện trùng lặp với chứng chỉ: {matched.join(', ') || 'Không rõ'}
+          {score !== null && (
+            <div className="mt-2 h-2 w-full rounded bg-slate-200">
+              <div
+                className={`h-2 rounded ${result === 'unique' ? 'bg-emerald-500' : result === 'duplicate' ? 'bg-rose-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(100, Math.max(0, Math.round(score * 100)))}%` }}
+              />
+            </div>
+          )}
+          {result === 'duplicate' && (
+            <div className="mt-2 text-xs text-slate-700">
+              Trùng lặp với: {matched.join(', ') || 'Không rõ'}
+            </div>
+          )}
         </div>
       )}
 
@@ -131,25 +152,7 @@ export default function CertificateCheck({
         </div>
       )}
 
-      {metrics && (
-        <div className="p-3 border rounded bg-slate-50 text-slate-800">
-          <p className="font-medium">Đánh giá thuật toán (mô phỏng)</p>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-            <div>Điểm F1: <b>{metrics.f1_score}%</b></div>
-            <div>Độ chính xác (Precision): <b>{metrics.precision}%</b></div>
-            <div>Độ bao phủ (Recall): <b>{metrics.recall}%</b></div>
-            <div>Độ đúng (Accuracy): <b>{metrics.accuracy}%</b></div>
-          </div>
-          <div className="mt-2 text-sm">
-            Ma trận nhầm lẫn — Đúng trùng (TP): {metrics.confusion_matrix.TP}, Báo trùng nhầm (FP): {metrics.confusion_matrix.FP}, Bỏ sót trùng (FN): {metrics.confusion_matrix.FN}, Đúng không trùng (TN): {metrics.confusion_matrix.TN}
-          </div>
-          {heatmapUrl && (
-            <div className="mt-3">
-              <img src={heatmapUrl} alt="Ma trận nhầm lẫn" className="max-w-full h-auto border rounded" />
-            </div>
-          )}
-        </div>
-      )}
+      
     </div>
   );
 }
