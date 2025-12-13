@@ -13,7 +13,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import Link from "next/link";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { fetcher } from "@/lib/fetcher";
 
 type Learner = {

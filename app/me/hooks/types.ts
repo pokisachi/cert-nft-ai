@@ -7,6 +7,7 @@ export type CourseRow = {
   endDate?: string;
   examDate?: string;
   status: CourseStatus;
+  thumbnailUrl?: string;
 };
 
 export type CoursesResponse = { items: CourseRow[]; total: number };

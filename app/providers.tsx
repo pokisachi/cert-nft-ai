@@ -3,8 +3,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ToastProviderWrapper } from "@/components/ui/use-toast"; // ✅ thêm Toast Provider
+import { ThemeProvider } from "next-themes";
 
 export default function Providers({ children }: { children: ReactNode }) {
+  // Prevent hydration mismatch by using client-side only rendering for theme
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   // ✅ Cấu hình React Query client (cache, retry, UX mượt)
   const [client] = useState(
     () =>
@@ -70,9 +77,11 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <ToastProviderWrapper>
-        {children}
-      </ToastProviderWrapper>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ToastProviderWrapper>
+          {mounted ? children : <div style={{ visibility: "hidden" }}>{children}</div>}
+        </ToastProviderWrapper>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

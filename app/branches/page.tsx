@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Branch } from '@/lib/branchStore'
 import { haversineKm, findNearest } from '@/lib/geo'
+import { Phone, Navigation, MapPin, Search, Map as MapIcon, X } from 'lucide-react'
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([])
@@ -17,6 +18,9 @@ export default function BranchesPage() {
   const mapInst = useRef<any>(null)
   const layerGroup = useRef<any>(null)
   const routeLayer = useRef<any>(null)
+  const [showMapMobile, setShowMapMobile] = useState(false)
+  const [showRouteNotification, setShowRouteNotification] = useState(false)
+  const [routeNotificationFading, setRouteNotificationFading] = useState(false)
 
   const [routeGeometry, setRouteGeometry] = useState<any>(null)
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null)
@@ -52,19 +56,6 @@ export default function BranchesPage() {
     })()
   }, [])
 
-  // Fetch driving distances for all branches when userLoc changes
-  // DISABLED to prevent OSRM Rate Limiting (429) which breaks the main routing feature
-  /*
-  useEffect(() => {
-    if (!userLoc || branches.length === 0) return
-
-    const fetchAllDistances = async () => {
-      // ... (batch fetch logic disabled)
-    }
-    // ...
-  }, [userLoc, branches, selectedBranch])
-  */
-
   useEffect(() => {
     if (userLoc && branches.length) {
       const near = findNearest(userLoc, branches)
@@ -82,7 +73,7 @@ export default function BranchesPage() {
         setRouteInfo(null)
         return
     }
-    
+
     const fetchRoute = async () => {
         setIsRouting(true)
         routingSeqRef.current += 1
@@ -92,7 +83,7 @@ export default function BranchesPage() {
             const start = `${userLoc.longitude},${userLoc.latitude}`;
             const end = `${selectedBranch.longitude},${selectedBranch.latitude}`;
             const res = await fetch(`/api/routing?start=${start}&end=${end}`, { cache: 'no-store' })
-            
+
             if (!res.ok) {
                throw new Error(`Routing API Error: ${res.statusText}`)
             }
@@ -101,6 +92,7 @@ export default function BranchesPage() {
             if (seq === routingSeqRef.current && data.code === 'Ok' && data.routes && data.routes.length > 0) {
                 setRouteGeometry(data.routes[0].geometry)
                 setRouteInfo({ distance: data.routes[0].distance, duration: data.routes[0].duration })
+                setShowRouteNotification(true)
             } else {
                 // Keep silent and fallback to straight line
                 if (seq === routingSeqRef.current) {
@@ -125,8 +117,8 @@ export default function BranchesPage() {
   }, [userLoc, selectedBranch])
 
   const filteredBranches = branches
-    .filter(b => 
-      b.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    .filter(b =>
+      b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.address.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
@@ -168,8 +160,8 @@ export default function BranchesPage() {
     }
     branches.forEach((b) => {
       const isSelected = selectedBranch?.id === b.id
-      
-      
+
+
       const marker = L.marker([b.latitude, b.longitude], {
         icon: branchIcon(isSelected)
       })
@@ -181,7 +173,7 @@ export default function BranchesPage() {
              ${userLoc ? `<div class="text-xs text-blue-600 mt-1 font-medium">Cách bạn: ${haversineKm(userLoc.latitude, userLoc.longitude, b.latitude, b.longitude).toFixed(2)} km</div>` : ''}
            </div>`
         )
-      
+
       marker.on('click', () => setSelectedBranch(b))
       if (isSelected) marker.openPopup()
     })
@@ -200,35 +192,36 @@ export default function BranchesPage() {
 
         const layers: any[] = [outline, mainLine]
 
-        // Add info bubble at the midpoint of the route
-        if (routeInfo && routeGeometry.coordinates && routeGeometry.coordinates.length > 0) {
-            const coords = routeGeometry.coordinates
-            const midIndex = Math.floor(coords.length / 2)
-            // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
-            const midPoint = [coords[midIndex][1], coords[midIndex][0]] as [number, number]
-
+        // Bind a sticky tooltip to the route that follows the cursor
+        if (routeInfo) {
             const durationMins = Math.round(routeInfo.duration / 60)
             const distanceKm = (routeInfo.distance / 1000).toFixed(1)
 
-            const bubbleIcon = L.divIcon({
-                className: 'route-info-bubble',
-                html: `
-                    <div style="background: white; padding: 4px 8px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ccc; font-family: sans-serif; text-align: center; min-width: 80px; transform: translate(-50%, -50%); white-space: nowrap;">
-                        <div style="font-weight: bold; color: #202124; font-size: 14px; line-height: 1.2;">${durationMins} phút</div>
-                        <div style="font-size: 12px; color: #5f6368;">${distanceKm} km</div>
-                        <div style="position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid white;"></div>
-                    </div>
-                `,
-                iconSize: [0, 0], // Size handled by CSS/content
-                iconAnchor: [0, 0] // Centered via transform in HTML
+            const tooltipHtml = `
+                <div style="background: white; padding: 4px 8px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ccc; font-family: sans-serif; text-align: center; min-width: 80px; white-space: nowrap;">
+                    <div style="font-weight: bold; color: #202124; font-size: 14px; line-height: 1.2;">${durationMins} phút</div>
+                    <div style="font-size: 12px; color: #5f6368;">${distanceKm} km</div>
+                </div>
+            `
+
+            mainLine.bindTooltip(tooltipHtml, {
+                sticky: true,
+                permanent: false,
+                direction: 'top',
+                offset: [0, -8],
+                className: 'route-info-tooltip'
             })
 
-            const bubbleMarker = L.marker(midPoint, { icon: bubbleIcon, interactive: false, zIndexOffset: 1000 })
-            layers.push(bubbleMarker)
+            mainLine.on('mouseover', () => {
+                try { (mainLine as any).openTooltip() } catch {}
+            })
+            mainLine.on('mouseout', () => {
+                try { (mainLine as any).closeTooltip() } catch {}
+            })
         }
 
         routeLayer.current = L.layerGroup(layers).addTo(mapInst.current)
-        
+
         // Fit bounds to show the route with some padding
         try {
             // We use the mainLine for bounds
@@ -257,7 +250,7 @@ export default function BranchesPage() {
       mapInst.current = L.map(container)
       const center = userLoc ? [userLoc.latitude, userLoc.longitude] : [branches[0]?.latitude ?? 21.028511, branches[0]?.longitude ?? 105.804817]
       mapInst.current.setView(center as any, 12)
-      
+
       // Use Standard OpenStreetMap tiles (Light/Bright)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors',
@@ -281,7 +274,7 @@ export default function BranchesPage() {
             btn.style.backgroundColor = 'white';
             btn.style.cursor = 'pointer';
             btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`;
-            
+
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -295,7 +288,7 @@ export default function BranchesPage() {
         }
       });
       mapInst.current.addControl(new LocateControl());
-      
+
       layerGroup.current = L.layerGroup().addTo(mapInst.current)
       renderMarkers()
       setTimeout(() => { try { mapInst.current.invalidateSize() } catch {} }, 0)
@@ -338,112 +331,264 @@ export default function BranchesPage() {
     }
   }, [userLoc])
 
+  // Auto-dismiss route notification after 5 seconds
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (showRouteNotification) {
+      timeoutId = setTimeout(() => {
+        setRouteNotificationFading(true);
+        setTimeout(() => {
+          setShowRouteNotification(false);
+          setRouteNotificationFading(false);
+        }, 300); // Match the transition duration
+      }, 5000);
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [showRouteNotification]);
+
+  // Format distance for display
+  const formatDistance = (branch: Branch) => {
+    if (!userLoc) return null;
+
+    if (branchDistances[branch.id]) {
+      return (branchDistances[branch.id].distance / 1000).toFixed(1) + ' km';
+    } else {
+      return haversineKm(userLoc.latitude, userLoc.longitude, branch.latitude, branch.longitude).toFixed(1) + ' km';
+    }
+  };
+
+  // Handle phone call
+  const handlePhoneCall = (e: React.MouseEvent, branch: Branch) => {
+    e.stopPropagation();
+    // This would typically use the branch's phone number, but we'll use a placeholder
+    window.open(`tel:+84123456789`, '_self');
+  };
+
+  // Handle directions
+  const handleDirections = (e: React.MouseEvent, branch: Branch) => {
+    e.stopPropagation();
+    if (!userLoc) {
+      alert("Vui lòng bật vị trí để sử dụng tính năng chỉ đường");
+      return;
+    }
+    setSelectedBranch(branch);
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6 bg-[#F7F8FA] text-slate-800">
-      <h1 className="text-2xl font-semibold text-slate-900">Danh sách chi nhánh</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col h-[65vh]">
-          <div className="p-4 border-b border-slate-200">
-            <input
-              type="text"
-              placeholder="Tìm kiếm chi nhánh..."
-              className="w-full p-2 bg-white border border-slate-300 rounded text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="overflow-y-auto flex-1">
-            <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-slate-100 z-10">
-                <tr className="border-b border-slate-200">
-                  <th className="text-left p-2">Tên</th>
-                  <th className="text-left p-2">Địa chỉ</th>
-                  <th className="text-left p-2">Khoảng cách</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBranches.map((b) => {
-                   const isSelected = selectedBranch?.id === b.id
-                   return (
-                    <tr 
-                      key={b.id} 
-                      className={`border-b border-slate-200 cursor-pointer hover:bg-slate-100 ${isSelected ? 'bg-slate-100 border-l-4 border-l-blue-500' : ''}`}
-                      onClick={() => setSelectedBranch(b)}
-                    >
-                      <td className="p-2 font-medium text-slate-900">{b.name}</td>
-                      <td className="p-2 text-slate-700">{b.address}</td>
-                      <td className="p-2 text-slate-700">
-                        {userLoc ? (
-                          branchDistances[b.id] ? (
-                            <span title="Khoảng cách di chuyển"> { (branchDistances[b.id].distance / 1000).toFixed(1) } km</span>
-                          ) : (
-                            <span className="text-slate-500" title="Đang tính toán...">
-                               {haversineKm(userLoc.latitude, userLoc.longitude, b.latitude, b.longitude).toFixed(1)} km*
-                            </span>
-                          )
-                        ) : '-'}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {filteredBranches.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-4 text-center text-slate-500">Không tìm thấy chi nhánh nào</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-slate-200 p-2 flex flex-col shadow-sm">
-          <div ref={mapRef} className="w-full flex-1 min-h-[400px] rounded relative z-0">
-            {isRouting && (
-              <div className="absolute inset-0 bg-slate-200/40 backdrop-blur-sm flex items-center justify-center z-[500] pointer-events-none">
-                <div className="bg-white text-slate-800 px-4 py-3 rounded shadow border border-slate-200 text-sm flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><circle cx="12" cy="12" r="10"/></svg>
-                  Đang tính đường đi…
-                </div>
+    <div className="w-full h-[calc(100vh-64px)] overflow-hidden bg-white">
+      {/* Mobile View with Floating Map Button */}
+      <div className="md:hidden h-full">
+        {showMapMobile ? (
+          <div className="fixed inset-0 z-50 bg-white h-full">
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="font-semibold text-lg">Bản đồ chi nhánh</h2>
+                <button
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  onClick={() => setShowMapMobile(false)}
+                >
+                  <X size={20} />
+                </button>
               </div>
-            )}
-          </div>
-          {/* Locate Me Button - moved into map using Leaflet Control standard positioning style */}
-          {/* We render it here but it's absolute positioned over the map. Standard Leaflet controls are usually inside the map container but custom divs work too if positioned right. 
-              To match user request "inside map", bottom-right is standard. */}
-          
-          {routeInfo && selectedBranch && (
-             <div className="absolute top-4 right-4 z-[400] bg-white p-3 rounded shadow-lg text-slate-800 max-w-xs border border-slate-200">
-               <div className="flex items-start gap-3">
-                   <div className="bg-blue-500 text-white p-2 rounded-full mt-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 19h-6a8 8 0 0 1-8-8V5"/><polyline points="11 9 5 3 19 3"/></svg>
-                   </div>
-                   <div>
-                      <div className="font-bold text-lg text-slate-900">{(routeInfo.duration / 60).toFixed(0)} phút</div>
-                      <div className="text-sm text-slate-600">{(routeInfo.distance / 1000).toFixed(1)} km</div>
-                      <div className="text-xs text-slate-500 mt-1">Đến: {selectedBranch.name}</div>
-                   </div>
-               </div>
-             </div>
-          )}
-          <div className="text-sm mt-2 p-2 bg-white rounded border border-slate-200">
-            {selectedBranch ? (
-              <div className="flex items-center justify-between">
-                <div>
-                   <div className="font-semibold text-slate-900">{selectedBranch.name}</div>
-                   <div className="text-xs text-slate-600">{selectedBranch.address}</div>
-                   {userLoc && (
-                     <div className="text-xs mt-1 text-slate-600">
-                       {routeInfo ? (
-                           <span>Khoảng cách di chuyển: <span className="text-slate-900 font-medium">{(routeInfo.distance / 1000).toFixed(1)} km</span></span>
-                       ) : (
-                           <span>Khoảng cách (thẳng): {haversineKm(userLoc.latitude, userLoc.longitude, selectedBranch.latitude, selectedBranch.longitude).toFixed(2)} km</span>
-                       )}
-                     </div>
-                   )}
+              <div className="flex-1 relative">
+                <div ref={mapRef} className="absolute inset-0 w-full h-full">
+                  {isRouting && (
+                    <div className="absolute inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center z-[500] pointer-events-none">
+                      <div className="bg-white text-slate-800 px-4 py-3 rounded-lg shadow-lg border border-slate-200 text-sm flex items-center gap-2">
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                        Đang tính đường đi…
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
+                {showRouteNotification && routeInfo && selectedBranch && (
+                  <div 
+                    className={`absolute top-4 right-4 z-[400] bg-white p-3 rounded-lg shadow-lg text-slate-800 max-w-xs border border-slate-200 transition-all duration-300 cursor-pointer ${
+                      routeNotificationFading ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+                    }`}
+                    onClick={() => {
+                      setRouteNotificationFading(true);
+                      setTimeout(() => {
+                        setShowRouteNotification(false);
+                        setRouteNotificationFading(false);
+                      }, 300);
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="bg-blue-500 text-white p-2 rounded-full mt-1">
+                        <Navigation size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-lg text-slate-900">{(routeInfo.duration / 60).toFixed(0)} phút</div>
+                        <div className="text-sm text-slate-600">{(routeInfo.distance / 1000).toFixed(1)} km</div>
+                        <div className="text-xs text-slate-500 mt-1">Đến: {selectedBranch.name}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {selectedBranch && (
+                <div className="p-4 border-t border-gray-200">
+                  <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                    <div className="font-semibold text-slate-900">{selectedBranch.name}</div>
+                    <div className="text-sm text-slate-600 mt-1">{selectedBranch.address}</div>
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
+                        onClick={(e) => handlePhoneCall(e, selectedBranch)}
+                      >
+                        <Phone size={14} />
+                        Gọi điện
+                      </button>
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
+                        onClick={(e) => handleDirections(e, selectedBranch)}
+                      >
+                        <Navigation size={14} />
+                        Chỉ đường
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowMapMobile(true)}
+            className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center"
+          >
+            <MapIcon size={24} />
+          </button>
+        )}
+      </div>
+
+      {/* Desktop Full-Screen Split View Layout */}
+      <div className="hidden md:flex h-full">
+        {/* Left Side - Branch List (Fixed Width) */}
+        <div className="w-[400px] bg-white border-r border-gray-200 flex flex-col h-full">
+          {/* Header with Title and Search */}
+          <div className="p-6 border-b border-gray-200 bg-white">
+            <h1 className="text-2xl font-bold text-slate-900 mb-4">Danh sách chi nhánh</h1>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Tìm kiếm chi nhánh..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Branch Cards List - Independent Scrolling */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {filteredBranches.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Không tìm thấy chi nhánh nào
               </div>
             ) : (
-              <div className="text-slate-600">{geoError ?? 'Chọn một chi nhánh để xem chi tiết…'}</div>
+              filteredBranches.map((branch) => {
+                const isSelected = selectedBranch?.id === branch.id;
+                const distance = formatDistance(branch);
+
+                return (
+                  <div
+                    key={branch.id}
+                    onClick={() => setSelectedBranch(branch)}
+                    className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-blue-500 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3">
+                        <MapPin className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{branch.name}</h3>
+                          <p className="text-sm text-gray-500 mt-1">{branch.address}</p>
+                        </div>
+                      </div>
+                      {distance && (
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium">
+                          {distance}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
+                        onClick={(e) => handlePhoneCall(e, branch)}
+                      >
+                        <Phone size={14} />
+                        Gọi điện
+                      </button>
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
+                        onClick={(e) => handleDirections(e, branch)}
+                      >
+                        <Navigation size={14} />
+                        Chỉ đường
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Side - Map (Flexible Width) */}
+        <div className="flex-1 relative">
+          <div className="h-full">
+            <div ref={mapRef} className="w-full h-full">
+              {isRouting && (
+                <div className="absolute inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center z-[500] pointer-events-none">
+                  <div className="bg-white text-slate-800 px-4 py-3 rounded-lg shadow-lg border border-slate-200 text-sm flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    Đang tính đường đi…
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {showRouteNotification && routeInfo && selectedBranch && (
+              <div 
+                className={`absolute top-4 right-4 z-[400] bg-white p-3 rounded-lg shadow-lg text-slate-800 max-w-xs border border-slate-200 transition-all duration-300 cursor-pointer ${
+                  routeNotificationFading ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+                }`}
+                onClick={() => {
+                  setRouteNotificationFading(true);
+                  setTimeout(() => {
+                    setShowRouteNotification(false);
+                    setRouteNotificationFading(false);
+                  }, 300);
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-500 text-white p-2 rounded-full mt-1">
+                    <Navigation size={16} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg text-slate-900">{(routeInfo.duration / 60).toFixed(0)} phút</div>
+                    <div className="text-sm text-slate-600">{(routeInfo.distance / 1000).toFixed(1)} km</div>
+                    <div className="text-xs text-slate-500 mt-1">Đến: {selectedBranch.name}</div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

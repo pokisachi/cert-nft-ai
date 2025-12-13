@@ -93,7 +93,7 @@ function CertificatesPublicContent() {
   }, [q]);
 
   return (
-    <main className="w-full px-6 md:px-8 py-6 md:py-8 bg-gradient-to-b from-slate-50 to-white text-slate-900 relative overflow-hidden">
+    <main className="mx-auto max-w-7xl p-4 md:p-8 bg-gradient-to-b from-slate-50 to-white text-slate-900 relative overflow-hidden">
       {/* Subtle background pattern */}
       <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(#3b82f6 0.5px, transparent 0.5px)", backgroundSize: "12px 12px" }}></div>
       
@@ -109,101 +109,115 @@ function CertificatesPublicContent() {
             </p>
           </div>
         
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm flex-wrap">
-          <div className="relative w-full md:w-2/5">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              <Search className="h-4 w-4" />
-            </div>
-            <input
-              className="w-full rounded-full border-0 bg-slate-100 text-slate-900 placeholder-slate-400 pl-10 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Tìm theo tên khóa học, token ID, hoặc IPFS hash..."
-              defaultValue={q}
-              onChange={(e) => setParam({ q: (e.target as HTMLInputElement).value, page: "1" })}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1">
-              <button
-                onClick={() => setParam({ status: "", page: "1" })}
-                className={`px-4 py-2 text-sm rounded-md ${status === "" ? "bg-white shadow-sm text-slate-900 font-semibold" : "bg-transparent text-slate-600 hover:text-slate-800"}`}
-              >
-                Tất cả
-              </button>
-              <button
-                onClick={() => setParam({ status: "VALID", page: "1" })}
-                className={`px-4 py-2 text-sm rounded-md ${status === "VALID" ? "bg-white shadow-sm text-slate-900 font-semibold" : "bg-transparent text-slate-600 hover:text-slate-800"}`}
-              >
-                Valid
-              </button>
-              <button
-                onClick={() => setParam({ status: "REVOKED", page: "1" })}
-                className={`px-4 py-2 text-sm rounded-md ${status === "REVOKED" ? "bg-white shadow-sm text-slate-900 font-semibold" : "bg-transparent text-slate-600 hover:text-slate-800"}`}
-              >
-                Revoked
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
+          {/* Search Area - Enhanced Design */}
+          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-lg">
+            <div className="flex-grow flex items-center gap-2 relative w-full md:w-2/3">
+              <div className="absolute left-3 text-indigo-400">
+                <Search className="h-4 w-4" />
+              </div>
               <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf"
-                className="sr-only"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  try {
-                    setPdfLoading(true);
-                    toast.loading("Đang tìm kiếm bằng file PDF...", { id: "ai-pdf" });
-                    const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
-                    const url = `${base.replace(/\/$/, "")}/certificates/ai-search-pdf`;
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      const dataUrl = reader.result as string;
-                      const b64 = (dataUrl.split(",")[1] || "");
-                      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64: b64 }) });
-                      const data = await res.json().catch(() => []);
-                      setPdfResults(Array.isArray(data) ? data : []);
-                      if (Array.isArray(data) && data.length > 0) {
-                        toast.success("Đã tìm thấy kết quả, đang mở...", { id: "ai-pdf" });
-                        router.push(`/cert/${data[0].tokenId}`);
-                      } else {
-                        toast.info("Không có kết quả AI phù hợp", { id: "ai-pdf" });
-                      }
-                      setPdfLoading(false);
-                    };
-                    reader.onerror = () => {
-                      setPdfResults([]);
-                      toast.error("Đọc PDF thất bại", { id: "ai-pdf" });
-                      setPdfLoading(false);
-                    };
-                    reader.readAsDataURL(f);
-                  } catch {
-                    setPdfResults([]);
-                    toast.error("Lỗi khi gửi PDF đến AI", { id: "ai-pdf" });
-                    setPdfLoading(false);
-                  }
-                }}
+                className="w-full rounded-lg border-0 bg-slate-50 text-slate-900 placeholder-slate-400 pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm"
+                placeholder="Tìm theo tên khóa học, token ID, hoặc IPFS hash..."
+                defaultValue={q}
+                onChange={(e) => setParam({ q: (e.target as HTMLInputElement).value, page: "1" })}
               />
-              <Button
-                onClick={() => fileRef.current?.click()}
-                className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition"
-              >
-                <Upload className="h-4 w-4" />
-                Tìm kiếm bằng PDF
-              </Button>
-              {pdfLoading && (
-                <span className="text-xs text-indigo-600 animate-pulse">Đang xử lý...</span>
-              )}
+            </div>
+            
+            {/* Status Filter - Segmented Control */}
+            <div className="flex items-center gap-4">
+              <div className="flex rounded-lg overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setParam({ status: "", page: "1" })} 
+                  className={`px-4 py-2.5 text-sm font-medium transition-all ${status === "" ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                >
+                  Tất cả
+                </button>
+                <button 
+                  onClick={() => setParam({ status: "VALID", page: "1" })} 
+                  className={`px-4 py-2.5 text-sm font-medium transition-all ${status === "VALID" ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    VALID
+                  </span>
+                </button>
+                <button 
+                  onClick={() => setParam({ status: "REVOKED", page: "1" })} 
+                  className={`px-4 py-2.5 text-sm font-medium transition-all ${status === "REVOKED" ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="relative flex h-2 w-2">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    REVOKED
+                  </span>
+                </button>
+              </div>
+              
+              {/* PDF Upload Button - Highlighted */}
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="sr-only"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    try {
+                      setPdfLoading(true);
+                      toast.loading("Đang tìm kiếm bằng file PDF...", { id: "ai-pdf" });
+                      const base = (process.env.NEXT_PUBLIC_AI_BASE_URL || "http://localhost:8002") as string;
+                      const url = `${base.replace(/\/$/, "")}/certificates/ai-search-pdf`;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const dataUrl = reader.result as string;
+                        const b64 = (dataUrl.split(",")[1] || "");
+                        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64: b64 }) });
+                        const data = await res.json().catch(() => []);
+                        setPdfResults(Array.isArray(data) ? data : []);
+                        if (Array.isArray(data) && data.length > 0) {
+                          toast.success("Đã tìm thấy kết quả, đang mở...", { id: "ai-pdf" });
+                          router.push(`/cert/${data[0].tokenId}`);
+                        } else {
+                          toast.info("Không có kết quả AI phù hợp", { id: "ai-pdf" });
+                        }
+                        setPdfLoading(false);
+                      };
+                      reader.onerror = () => {
+                        setPdfResults([]);
+                        toast.error("Đọc PDF thất bại", { id: "ai-pdf" });
+                        setPdfLoading(false);
+                      };
+                      reader.readAsDataURL(f);
+                    } catch {
+                      setPdfResults([]);
+                      toast.error("Lỗi khi gửi PDF đến AI", { id: "ai-pdf" });
+                      setPdfLoading(false);
+                    }
+                  }}
+                />
+                <Button
+                  onClick={() => fileRef.current?.click()}
+                  className="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg flex items-center gap-2 shadow-md font-medium transition-all duration-200 hover:translate-y-[-1px]"
+                >
+                  <Upload className="h-4 w-4" />
+                  Tìm kiếm bằng PDF
+                </Button>
+                {pdfLoading && (
+                  <span className="text-xs text-indigo-500 animate-pulse">Đang xử lý...</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
         </div>
 
         {/* Certificate Grid */}
         {pdfLoading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="relative overflow-hidden rounded-xl">
                 <Skeleton className="h-44 w-full rounded-xl bg-slate-100" />
@@ -212,7 +226,7 @@ function CertificatesPublicContent() {
             ))}
           </div>
         ) : pdfResults.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {pdfResults.map((it) => (
               <div key={it.tokenId} className="group relative rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-100 transition-all duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/0 to-indigo-50/20 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300"></div>
@@ -249,7 +263,7 @@ function CertificatesPublicContent() {
           </div>
         ) : q ? (
           aiLoading ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="relative overflow-hidden rounded-xl">
                   <Skeleton className="h-44 w-full rounded-xl bg-slate-100" />
@@ -266,7 +280,7 @@ function CertificatesPublicContent() {
               <p className="text-slate-400 text-sm mt-2">Hãy thử tìm kiếm với từ khóa khác.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {aiResults.map((it) => (
                 <div key={it.tokenId} className="group relative rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-100 transition-all duration-300">
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/0 to-indigo-50/20 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300"></div>
@@ -303,7 +317,7 @@ function CertificatesPublicContent() {
             </div>
           )
         ) : isLoading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="relative overflow-hidden rounded-xl">
                 <Skeleton className="h-44 w-full rounded-xl bg-slate-100" />
@@ -327,7 +341,7 @@ function CertificatesPublicContent() {
             <p className="text-slate-400 text-sm mt-2">Hãy thử tìm kiếm với từ khóa khác.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {data.items.map((it: any) => (
               <Link
                 key={it.tokenId}

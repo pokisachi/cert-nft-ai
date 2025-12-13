@@ -16,7 +16,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex max-h-screen w-full flex-col items-center p-4 sm:top-24 md:max-w-[560px]",
       className
     )}
     {...props}
@@ -25,11 +25,11 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group relative pointer-events-auto flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[calc(100%+1rem)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:slide-in-from-bottom-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group relative pointer-events-auto flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border p-5 pr-7 shadow-2xl transition-all bg-white text-gray-900 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[calc(100%+1rem)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80",
   {
     variants: {
       variant: {
-        default: "border bg-white text-gray-900",
+        default: "border border-gray-200",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
       },
@@ -93,7 +93,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-sm font-semibold", className)}
+    className={cn("text-lg font-semibold", className)}
     {...props}
   />
 ))
@@ -105,7 +105,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm opacity-90", className)}
+    className={cn("text-base opacity-90", className)}
     {...props}
   />
 ))

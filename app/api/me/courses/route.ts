@@ -15,15 +15,30 @@ export async function GET(req: Request) {
     orderBy: { enrolledAt: "desc" },
   });
 
-  const mapped = enrollments.map((e) => ({
-    id: e.course.id,
-    title: e.course.title,
-    category: e.course.category,
-    startDate: e.course.startDate,
-    endDate: e.course.endDate,
-    examDate: e.course.examDateExpected,
-    status: e.status, // PENDING / ACTIVE / COMPLETED
-  }));
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const mapped = enrollments.map((e) => {
+    const t = e.course.thumbnail || "";
+    let thumbnailUrl = "/default-thumbnail.png";
+    if (t) {
+      if (t.startsWith("/courses/")) {
+        thumbnailUrl = t;
+      } else if (t.startsWith("blob:")) {
+        thumbnailUrl = "/default-thumbnail.png";
+      } else {
+        thumbnailUrl = `${baseUrl}/courses/${t}`;
+      }
+    }
+    return {
+      id: e.course.id,
+      title: e.course.title,
+      category: e.course.category,
+      startDate: e.course.startDate,
+      endDate: e.course.endDate,
+      examDate: e.course.examDateExpected,
+      status: e.status,
+      thumbnailUrl,
+    };
+  });
 
   return NextResponse.json({ items: mapped, total: mapped.length });
 }

@@ -1,28 +1,27 @@
-'use client';
+"use client";
 
-import { useMyAnnouncements } from '../hooks/useMyAnnouncements';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { CalendarDays, AlertTriangle, PartyPopper } from 'lucide-react';
-import Link from 'next/link';
- 
+import { useMyAnnouncements } from "../me/hooks/useMyAnnouncements";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
+import { CalendarDays, AlertTriangle, PartyPopper } from "lucide-react";
+import Link from "next/link";
 
 function IconFor(a: { title?: string; scope?: string }) {
-  const title = (a.title || '').toLowerCase();
-  if (title.includes('cảnh báo') || title.includes('warning') || title.includes('lỗi')) return <AlertTriangle className="h-5 w-5 text-orange-600" />;
-  if (title.includes('lịch') || title.includes('schedule') || a.scope === 'course') return <CalendarDays className="h-5 w-5 text-blue-600" />;
+  const title = (a.title || "").toLowerCase();
+  if (title.includes("cảnh báo") || title.includes("warning") || title.includes("lỗi")) return <AlertTriangle className="h-5 w-5 text-orange-600" />;
+  if (title.includes("lịch") || title.includes("schedule") || a.scope === "course") return <CalendarDays className="h-5 w-5 text-blue-600" />;
   return <PartyPopper className="h-5 w-5 text-green-600" />;
 }
 
-export default function AnnouncementsPage() {
-  const { data, isLoading, isError, refetch, markRead, markAllRead } = useMyAnnouncements(50);
+export default function NotificationsPage() {
+  const { data, isLoading, isError, refetch, markRead, markAllRead } = useMyAnnouncements(100);
 
   if (isLoading)
     return (
       <main className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
           <Skeleton className="h-32 w-full" />
         </div>
       </main>
@@ -31,7 +30,7 @@ export default function AnnouncementsPage() {
   if (isError)
     return (
       <main className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
             <div>Đã có lỗi xảy ra khi tải thông báo.</div>
             <Button variant="outline" className="mt-3 border-gray-300" onClick={() => refetch()}>Thử lại</Button>
@@ -41,6 +40,7 @@ export default function AnnouncementsPage() {
     );
 
   const items = data?.items ?? [];
+
   const groups: Record<string, typeof items> = { today: [], yesterday: [], older: [] };
   for (const a of items) {
     const d = new Date(a.createdAt);
@@ -52,7 +52,7 @@ export default function AnnouncementsPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="w-full max-w-[1600px] mx-auto px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Tất cả thông báo</h1>
           <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function AnnouncementsPage() {
             >
               Đánh dấu đã đọc tất cả
             </Button>
-            <Link href="/notifications" className="text-sm text-gray-600 hover:text-gray-900">Trang mới</Link>
+            <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">Quay về</Link>
           </div>
         </div>
 
@@ -88,7 +88,7 @@ export default function AnnouncementsPage() {
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-gray-900 truncate">{a.title}</div>
                           <div className="text-sm text-gray-700 mt-1">{a.content}</div>
-                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
                         </div>
                       </div>
                     </button>
@@ -113,7 +113,7 @@ export default function AnnouncementsPage() {
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-gray-900 truncate">{a.title}</div>
                           <div className="text-sm text-gray-700 mt-1">{a.content}</div>
-                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
                         </div>
                       </div>
                     </button>
@@ -138,7 +138,7 @@ export default function AnnouncementsPage() {
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-gray-900 truncate">{a.title}</div>
                           <div className="text-sm text-gray-700 mt-1">{a.content}</div>
-                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}</div>
+                          <div className="text-xs text-gray-500 mt-2">{format(new Date(a.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
                         </div>
                       </div>
                     </button>

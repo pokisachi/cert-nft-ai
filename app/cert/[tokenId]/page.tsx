@@ -1,7 +1,10 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
-import { User, BookOpen, Link as LinkIcon, Hash } from "lucide-react";
+import Link from "next/link";
+import { User, BookOpen, Link as LinkIcon, Hash, Mail, Calendar, CheckCircle2, ExternalLink, Copy, Download, Share2 } from "lucide-react";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
 import { getPublicClient } from "@/lib/onchain/viem";
 import { CERT_ABI } from "@/lib/onchain/mint";
 
@@ -38,6 +41,30 @@ export default function CertDetailPage({
   const [onchainStatus, setOnchainStatus] = useState<"ACTIVE" | "BURNED" | null>(null);
   const contract = useMemo(() => (data?.blockchain?.contract || "") as `0x${string}` | "", [data]);
 
+  const truncateMiddle = (value: string | null | undefined) => {
+    const s = value || "";
+    if (!s) return "—";
+    if (s.length <= 12) return s;
+    return `${s.slice(0, 6)}...${s.slice(-4)}`;
+  };
+
+  const copy = (text: string | null | undefined) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Đã copy");
+    });
+  };
+  const shareCertificate = () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = data ? `Chứng chỉ #${data.tokenId}` : "Chứng chỉ";
+    const navAny = navigator as any;
+    if (navAny && typeof navAny.share === "function") {
+      navAny.share({ title, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => toast.success("Đã copy"));
+    }
+  };
+
   useEffect(() => {
     fetch(`/api/certificates/${tokenId}`)
       .then((res) => res.json())
@@ -66,7 +93,7 @@ export default function CertDetailPage({
 
   
 
-  if (!data) return <p className="p-6 bg-[#111318] text-white">Đang tải...</p>;
+  if (!data) return <p className="p-6 bg-gray-50 text-gray-900">Đang tải...</p>;
 
   const issueDate = new Date(data.issuedAt).toLocaleDateString("vi-VN");
   const dob = data.student.dob
@@ -121,19 +148,30 @@ const downloadCertificate = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#111318] text-white py-10">
+    <div className="min-h-screen bg-gray-50 text-gray-900 py-10">
       <div className="max-w-6xl mx-auto px-4 space-y-8">
 
-        {/* HEADER */}
-        <div className="flex items-start justify-between">
-          <h1 className="text-3xl font-bold">🎓 Chứng chỉ #{data.tokenId}</h1>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs bg-[#1c1f27] border border-[#3b4354] text-white/80">Ngày cấp: {issueDate}</span>
-            {data.revoked ? (
-              <span className="px-3 py-1 rounded-full text-xs bg-red-900/30 text-red-300 border border-red-700/40">ĐÃ THU HỒI</span>
-            ) : (
-              <span className="px-3 py-1 rounded-full text-xs bg-emerald-900/30 text-emerald-300 border border-emerald-700/40">HIỆU LỰC</span>
-            )}
+        <div className="space-y-3">
+          <div className="text-xs text-gray-500 flex items-center gap-2">
+            <Link href="/" className="hover:text-gray-700">Trang chủ</Link>
+            <span>›</span>
+            <Link href="/cert" className="hover:text-gray-700">Chứng chỉ</Link>
+            <span>›</span>
+            <span>{data.course.title || data.student.name || "Chi tiết"}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">{data.course.title || data.student.name || `Chứng chỉ #${data.tokenId}`}</h1>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200 font-medium">Token: #{data.tokenId}</span>
+            <span className="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200 font-medium">ERC-721</span>
+            <span className={`px-2.5 py-1 rounded-full text-xs border font-medium inline-flex items-center gap-1 ${data.revoked ? "bg-red-100 text-red-700 border-red-200" : (onchainStatus === "ACTIVE" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-700 border-gray-200")}`}>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {data.revoked ? "Revoked" : onchainStatus === "ACTIVE" ? "Verified" : "Burned"}
+            </span>
+            <span className="inline-flex items-center gap-1 text-sm text-gray-600">
+              <Calendar className="h-4 w-4" /> {issueDate}
+            </span>
           </div>
         </div>
 
@@ -142,144 +180,150 @@ const downloadCertificate = () => {
           {/* ============================
               LEFT SIDE — Certificate Preview
           ============================= */}
-          <div className="flex flex-col gap-4">
-            
-            {/* Certificate Thumbnail */}
-            <div
-              id="certificate-content"
-              className="
-                relative w-full aspect-[3/4] rounded-2xl shadow-xl overflow-hidden 
-                bg-white border border-slate-300 mx-auto
-              "
-              style={{
-                backgroundImage: "url(/cert-bg.png)",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              <div className="absolute inset-0 flex flex-col justify-center items-center p-10 text-center">
-
-                <p className="text-xs text-amber-600 tracking-[0.25em] uppercase">
-                  Certificate of Completion
-                </p>
-
-                <p className="mt-3 text-sm text-slate-600">Trao cho</p>
-
-                <p className="text-xl font-bold text-slate-900 mt-1">
-                  {data.student.name}
-                </p>
-
-                <p className="mt-4 text-xs text-slate-600">
-                  Đã hoàn thành khóa học
-                </p>
-
-                <p className="text-sm font-medium text-slate-800">
-                  {data.course.title}
-                </p>
-
-                {/* Footer */}
-                <div className="absolute bottom-6 w-full px-8 flex justify-between text-[10px] text-slate-600">
-                  <div>
-                    <p>Mã chứng chỉ</p>
-                    <p className="font-bold text-slate-800">#{data.tokenId}</p>
-                  </div>
-
-                  <div className="text-right">
-                    <p>Blockchain</p>
-                    <p className="font-bold text-slate-800">
-                      Chain {data.blockchain.chainId}
-                    </p>
+          <div className="md:sticky md:top-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div
+                id="certificate-content"
+                className="relative w-full aspect-[3/4] rounded-lg shadow-lg overflow-hidden bg-white border border-gray-200"
+                style={{ backgroundImage: "url(/cert-bg.png)", backgroundSize: "cover", backgroundPosition: "center" }}
+              >
+                <div className="absolute inset-0 flex flex-col justify-center items-center p-10 text-center">
+                  <p className="text-xs text-amber-600 tracking-[0.25em] uppercase">Certificate of Completion</p>
+                  <p className="mt-3 text-sm text-gray-600">Trao cho</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{data.student.name}</p>
+                  <p className="mt-4 text-xs text-gray-600">Đã hoàn thành khóa học</p>
+                  <p className="text-sm font-medium text-gray-800">{data.course.title}</p>
+                  <div className="absolute bottom-6 w-full px-8 flex justify-between text-[10px] text-gray-600">
+                    <div>
+                      <p>Mã chứng chỉ</p>
+                      <p className="font-bold text-gray-800">#{data.tokenId}</p>
+                    </div>
+                    <div className="text-right">
+                      <p>Blockchain</p>
+                      <p className="font-bold text-gray-800">Chain {data.blockchain.chainId}</p>
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  onClick={downloadCertificate}
+                  disabled={data.revoked}
+                  aria-label="Tải PDF"
+                  className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-white font-medium ${data.revoked ? "bg-gray-600 cursor-not-allowed" : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"} shadow-md hover:shadow-lg active:scale-95 transition`}
+                >
+                  <Download className="h-5 w-5" />
+                  Tải PDF
+                </button>
+                <button
+                  onClick={shareCertificate}
+                  aria-label="Chia sẻ"
+                  className="inline-flex items-center justify-center rounded-lg px-3 py-3 border border-gray-200 text-gray-700 hover:bg-gray-100"
+                >
+                  <Share2 className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-
-            {/* Buttons */}
-            <button
-              onClick={downloadCertificate}
-              disabled={data.revoked}
-              className={`w-full py-3 px-4 rounded-md text-white font-medium ${data.revoked ? "bg-gray-600 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}`}
-            >
-              📄 Tải chứng chỉ (PDF)
-            </button>
-
-            <button
-              onClick={downloadCertificate}
-              disabled={data.revoked}
-              className={`w-full py-3 px-4 rounded-md text-white font-medium ${data.revoked ? "bg-gray-700 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-800"}`}
-            >
-              🖨️ In chứng chỉ
-            </button>
-
-            {scanUrl && (
-              <a
-                href={scanUrl}
-                target="_blank"
-                className={`w-full py-3 px-4 text-center rounded-md text-white font-medium ${data.revoked ? "bg-red-700 hover:bg-red-800" : "bg-emerald-600 hover:bg-emerald-700"}`}
-              >
-                {data.revoked ? "⚠️ Kiểm tra On-chain (đã thu hồi)" : "🔍 Kiểm tra On-chain"}
-              </a>
-            )}
           </div>
 
           {/* ============================
               RIGHT SIDE — Details
           ============================= */}
           <div className="space-y-6">
+            <section className="bg-white p-5 rounded-2xl border border-gray-200">
+              <div className="text-gray-900 font-semibold mb-2">Chi tiết</div>
 
-            {/* Student Info */}
-            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
-              <div className="flex items-center gap-2 mb-3"><User className="h-5 w-5" /><h2 className="text-lg font-semibold">Học viên</h2></div>
-              <p><b>Họ tên:</b> {data.student.name}</p>
-              <p className="break-all"><b>Email:</b> {data.student.email}</p>
-              <p><b>Ngày sinh:</b> {dob}</p>
-            </section>
-
-            {/* Course Info */}
-            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
-              <div className="flex items-center gap-2 mb-3"><BookOpen className="h-5 w-5" /><h2 className="text-lg font-semibold">Khóa học</h2></div>
-              <p><b>Tiêu đề:</b> {data.course.title}</p>
-              <p><b>Danh mục:</b> {data.course.category}</p>
-            </section>
-
-            {/* Blockchain Info */}
-            <section className="bg-[#1c1f27] p-5 rounded-2xl border border-[#3b4354]">
-              <div className="flex items-center gap-2 mb-3"><Hash className="h-5 w-5" /><h2 className="text-lg font-semibold">Blockchain</h2></div>
-
-              <p><b>Chain ID:</b> {data.blockchain.chainId}</p>
-
-              <p className="break-all font-mono text-sm">
-                <b>Contract:</b> {data.blockchain.contract}
-              </p>
-
-              <p className="break-all font-mono text-sm"><b>TxHash:</b> {data.blockchain.txHash || "—"}</p>
-              <p className="break-all font-mono text-sm"><b>On-chain owner:</b> {onchainOwner || "—"}</p>
-              <p className="break-all font-mono text-sm"><b>On-chain status:</b> {onchainStatus || "—"}</p>
-
-
-              {scanUrl && (
-                <div className="mt-4 p-3 rounded-md bg-blue-900/20 border border-blue-500/40">
-                  <p className="text-sm font-medium mb-1 text-blue-300">
-                    {data.revoked ? "Chứng chỉ đã bị thu hồi — kiểm tra lịch sử giao dịch on-chain:" : "Kiểm tra giao dịch on-chain:"}
-                  </p>
-
-                  <a
-                    href={scanUrl}
-                    target="_blank"
-                    className="inline-block px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                  >
-                    🔗 Xem giao dịch trên VicScan
-                  </a>
+              <div className="divide-y divide-gray-200">
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><User className="h-4 w-4" />Học viên</div>
+                  <div className="flex items-center gap-2 text-gray-900">{data.student.name || "—"}</div>
                 </div>
-              )}
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><Mail className="h-4 w-4" />Email</div>
+                  <div className="flex items-center gap-2 text-gray-900 break-all">{data.student.email}</div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><Calendar className="h-4 w-4" />Ngày cấp</div>
+                  <div className="flex items-center gap-2 text-gray-900">{issueDate}</div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><BookOpen className="h-4 w-4" />Khóa học</div>
+                  <div className="flex items-center gap-2 text-gray-900">{data.course.title}</div>
+                </div>
+
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><CheckCircle2 className="h-4 w-4 text-green-600" />Trạng thái On-chain</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`${data.revoked ? "bg-red-100 text-red-700 border border-red-200" : (onchainStatus === "ACTIVE" ? "bg-green-100 text-green-700 border border-green-200" : "bg-gray-100 text-gray-700 border border-gray-200")} inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium`}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {data.revoked ? "Revoked" : onchainStatus === "ACTIVE" ? "Verified" : "Burned"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><User className="h-4 w-4" />Owner</div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="font-mono">{truncateMiddle(onchainOwner)}</span>
+                    {onchainOwner && (
+                      <button aria-label="Copy owner" onClick={() => copy(onchainOwner)} className="text-indigo-600 hover:text-indigo-700"><Copy className="h-4 w-4" /></button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><LinkIcon className="h-4 w-4" />Contract Address</div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="font-mono">{truncateMiddle(data.blockchain.contract)}</span>
+                    {data.blockchain.contract && (
+                      <button aria-label="Copy contract" onClick={() => copy(data.blockchain.contract)} className="text-indigo-600 hover:text-indigo-700"><Copy className="h-4 w-4" /></button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><Hash className="h-4 w-4" />TxHash</div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="font-mono">{truncateMiddle(data.blockchain.txHash)}</span>
+                    {data.blockchain.txHash && (
+                      <button aria-label="Copy txhash" onClick={() => copy(data.blockchain.txHash!)} className="text-indigo-600 hover:text-indigo-700"><Copy className="h-4 w-4" /></button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><Hash className="h-4 w-4" />Token ID</div>
+                  <div className="flex items-center gap-2 text-gray-900">
+                    <span className="font-mono">{data.tokenId}</span>
+                    <button aria-label="Copy token id" onClick={() => copy(String(data.tokenId))} className="text-indigo-600 hover:text-indigo-700"><Copy className="h-4 w-4" /></button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><LinkIcon className="h-4 w-4" />Explorer</div>
+                  <div className="flex items-center gap-2">
+                    {scanUrl ? (
+                      <a href={scanUrl} target="_blank" className="text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1">
+                        Xem trên VicScan
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">—</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><LinkIcon className="h-4 w-4" />Classification</div>
+                  <div className="flex items-center gap-2 text-gray-900">Off-Chain (IPFS)</div>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-2 text-gray-500"><LinkIcon className="h-4 w-4" />Token Standard</div>
+                  <div className="flex items-center gap-2 text-gray-900">ERC-721</div>
+                </div>
+              </div>
             </section>
 
-        
             {data.revoked && (
-              <section className="bg-red-900/20 p-5 rounded-2xl border border-red-700/40">
-                <p className="text-sm text-red-300">Chứng chỉ này đã bị thu hồi. Nội dung PDF/in ấn bị vô hiệu để tránh sử dụng sai mục đích. Chủ sở hữu vẫn có thể xem lịch sử giao dịch on-chain.</p>
+              <section className="bg-red-50 p-5 rounded-2xl border border-red-200">
+                <p className="text-sm text-red-700">Chứng chỉ này đã bị thu hồi. Nội dung PDF/in ấn bị vô hiệu để tránh sử dụng sai mục đích. Chủ sở hữu vẫn có thể xem lịch sử giao dịch on-chain.</p>
                 {data.revocation?.txHash && (
-                  <p className="mt-2 text-xs text-white/70">
+                  <p className="mt-2 text-xs text-gray-700">
                     Tx thu hồi: <span className="font-mono break-all">{data.revocation.txHash}</span>{" "}
                     {data.revocation.at ? `• thời điểm: ${new Date(data.revocation.at).toLocaleString("vi-VN")}` : ""}
                   </p>

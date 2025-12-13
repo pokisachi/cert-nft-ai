@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import HeroSection from "@/components/HeroSection";
-import FeatureGrid from "@/components/FeatureGrid";
-import StatsBar from "@/components/StatsBar";
-import Footer from "@/components/Footer";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import StatsAndFeatures from "@/components/StatsAndFeatures";
+import TravelCourses from "@/components/TravelCourses";
 import home from "@/lib/i18n/home.json";
+import { useCourses } from "@/hooks/useCourses";
+import { useTheme } from "next-themes";
 
-// 🧱 Interface cho dữ liệu thông báo
+// Interface cho dữ liệu thông báo
 interface Notification {
   id: number;
   title: string;
@@ -18,9 +18,16 @@ interface Notification {
 
 export default function HomePage() {
   const [pinned, setPinned] = useState<Notification[]>([]);
-  const [active, setActive] = useState(0);
+  const { data: courses, isLoading } = useCourses();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  // 📦 Gọi API lấy tin nổi bật
+  // Handle theme mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Gọi API lấy tin nổi bật
   useEffect(() => {
     const fetchPinned = async () => {
       try {
@@ -30,72 +37,61 @@ export default function HomePage() {
         setPinned(data);
       } catch (error) {
         console.error("Error fetching pinned announcements:", error);
+        // Fallback data when API fails
+        setPinned([
+          {
+            id: 1,
+            title: "Khóa học mới",
+            content: "Chúng tôi vừa ra mắt khóa học Blockchain cơ bản",
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 2,
+            title: "Chứng chỉ NFT",
+            content: "Tất cả học viên sẽ nhận được chứng chỉ dưới dạng NFT",
+            createdAt: new Date().toISOString()
+          }
+        ]);
       }
     };
     fetchPinned();
   }, []);
 
-  // ⏱️ Tự động đổi tin mỗi 4 giây
-  useEffect(() => {
-    if (pinned.length === 0) return;
-    const timer = setInterval(() => {
-      setActive((prev) => (prev + 1) % pinned.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [pinned]);
+  // Stats section removed as requested
+
+  // Add location and rating properties to courses for travel-style display
+  const enhancedCourses = courses?.map((course, index) => ({
+    ...course,
+    location: ["Hà Nội", "TP. Hồ Chí Minh", "Hải Phòng", "Cần Thơ", "Đà Nẵng", "Huế"][index % 6],
+    rating: Math.floor(Math.random() * 2) + 3, // Ratings between 3-5
+  })) || [];
+
+  // Determine current theme
+  const currentTheme = mounted ? theme : "light";
+  const isDark = currentTheme === "dark";
+
+  // Select featured course and other courses
+  const featuredCourse = enhancedCourses[0] || {
+    id: "featured",
+    title: "Khám phá các khóa học chứng chỉ blockchain",
+    description: "Trải nghiệm các khóa học được thiết kế bởi chuyên gia hàng đầu, tích hợp công nghệ blockchain để cấp chứng chỉ minh bạch và xác thực toàn cầu.",
+    thumbnail: "/course/Master.png",
+  };
+  const otherCourses = enhancedCourses.slice(1) || [];
 
   return (
-    <main className="min-h-screen flex flex-col bg-[#111318] text-white">
-      {/* ✅ PHẦN TIN NỔI BẬT - NHỎ GỌN */}
-      {pinned.length > 0 && (
-        <section className="bg-[#1c1f27] border-b border-[#282d39] py-2">
-          <div className="max-w-3xl mx-auto px-3 text-center">
-            <h2 className="text-base font-semibold text-white/80 mb-2 flex items-center justify-center gap-1">
-              📢 Tin nổi bật
-            </h2>
+    <>
+      {/* Announcement Bar */}
+      <AnnouncementBar notifications={pinned} theme="dark" />
 
-            <div className="relative min-h-[70px] flex items-center justify-center overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={pinned[active].id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.5 }}
-                  className="bg-[#282d39] border border-[#3b4354] rounded-md py-2 px-4 inline-block max-w-md"
-                >
-                  <h3 className="font-medium text-sm text-white truncate">
-                    {pinned[active].title}
-                  </h3>
-                  <p className="text-xs text-white/80 mt-1 line-clamp-2">
-                    {pinned[active].content}
-                  </p>
-                  <p className="text-[10px] text-white/60 mt-1">
-                    {new Date(pinned[active].createdAt).toLocaleDateString("vi-VN")}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="flex justify-center gap-1 mt-2">
-              {pinned.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActive(i)}
-                  className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                    i === active ? "bg-white scale-125" : "bg-white/40"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 🔹 Các section chính của trang chủ */}
-      <HeroSection content={home.home.hero} />
-      <FeatureGrid content={home.home.features} />
-      <StatsBar content={home.home.stats} />
-    </main>
+      {/* Auto-playing Courses Carousel */}
+      <TravelCourses theme="dark" />
+      
+      {/* Features Section (Stats removed) */}
+      <StatsAndFeatures 
+        features={home.home.features}
+        theme="dark"
+      />
+    </>
   );
 }
