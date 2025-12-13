@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { KeyedMutator } from "swr";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 
 export type Course = {
   id: number;
@@ -68,90 +68,81 @@ export default function CourseTable({ data, onDeleted }: CourseTableProps & { st
   );
 
   return (
-    <div className="space-y-4">
-      {!(arguments as any)[0]?.hideHeaderFilter && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Danh sách khóa học</h2>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-[#3b4354] rounded p-2 bg-[#1c1f27] text-white"
-          >
-            <option value="all">Tất cả</option>
-            <option value="UPCOMING">UPCOMING</option>
-            <option value="ONGOING">ONGOING</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="CLOSED">CLOSED</option>
-          </select>
-        </div>
-      )}
-
-      <table className="w-full border-collapse rounded-2xl shadow-lg border border-[#3b4354] bg-[#1c1f27] text-white">
-        <thead>
-          <tr className="bg-[#282d39] text-left border-b border-[#3b4354]">
-            <th className="p-4 text-[#9da6b9]">Tên khóa học</th>
-            <th className="p-4 text-[#9da6b9]">Danh mục</th>
-            <th className="p-4 text-[#9da6b9]">Ngày bắt đầu</th>
-            <th className="p-4 text-[#9da6b9]">Ngày kết thúc</th>
-            <th className="p-4 text-[#9da6b9]">Trạng thái</th>
-            <th className="p-4 text-[#9da6b9]">Công khai</th>
-            <th className="p-4 text-center text-[#9da6b9]">Hành động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((c) => (
-            <tr key={c.id} className="border-t border-[#3b4354] hover:bg-[#272b33]">
-              {/* Tên khóa học → click vào xem danh sách ghi danh */}
-              <td
-                className="p-4 text-white cursor-pointer hover:bg-[#242833] rounded"
-                onClick={() => router.push(`/admin/courses/${c.id}/enrollments`)}
-                title="Xem danh sách ghi danh"
-              >
-                {c.title}
-              </td>
-
-              <td className="p-4">{c.category}</td>
-              <td className="p-4">{c.startDate?.slice(0, 10) || "—"}</td>
-              <td className="p-4">{c.endDate?.slice(0, 10) || "—"}</td>
-              <td className="p-4">
-                <span className={`text-xs rounded px-2 py-1 border ${
-                  c.status === "UPCOMING" ? "bg-indigo-900/30 text-indigo-300 border-indigo-500/40" :
-                  c.status === "ONGOING" ? "bg-emerald-900/30 text-emerald-300 border-emerald-500/40" :
-                  c.status === "COMPLETED" ? "bg-slate-800/60 text-slate-300 border-slate-600/40" :
-                  "bg-red-900/30 text-red-300 border-red-600/40"
-                }`}>{c.status}</span>
-              </td>
-              <td className="p-4 text-center">{c.isPublic ? "✅" : "❌"}</td>
-
-              <td className="p-4 text-center space-x-2">
-                {/* 🧠 Nút Lịch học AI */}
-                <Button
-                  size="sm"
-                  onClick={() => router.push(`/admin/courses/${c.id}`)}
-                >
-                  Sửa
-                </Button>
-
-                <ConfirmDialog
-                  title="Xóa khóa học"
-                  description={`Bạn có chắc chắn muốn xóa "${c.title}"?`}
-                  onConfirm={() => handleDelete(c.id)}
-                  trigger={
-                    <Button size="sm" variant="destructive">
-                      Xóa
-                    </Button>
-                  }
-                />
-              </td>
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tên khóa học</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Danh mục</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Ngày bắt đầu</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Ngày kết thúc</th>
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Trạng thái</th>
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Công khai</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Hành động</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((c) => (
+              <tr key={c.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                <td
+                  className="px-6 py-4 text-sm text-gray-900 font-medium cursor-pointer"
+                  onClick={() => router.push(`/admin/courses/${c.id}/enrollments`)}
+                  title="Xem danh sách ghi danh"
+                >
+                  {c.title}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{c.category}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{c.startDate?.slice(0, 10) || "—"}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{c.endDate?.slice(0, 10) || "—"}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap text-center">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      c.status === "UPCOMING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : c.status === "ONGOING"
+                        ? "bg-green-100 text-green-800"
+                        : c.status === "COMPLETED"
+                        ? "bg-gray-100 text-gray-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {c.status === "ONGOING" ? "ACTIVE" : c.status === "COMPLETED" ? "ENDED" : c.status === "CLOSED" ? "DRAFT" : c.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap text-center">
+                  <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={!!c.isPublic} readOnly />
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap text-right">
+                  <div className="inline-flex items-center gap-2">
+                    <button
+                      className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-lg"
+                      onClick={() => router.push(`/admin/courses/${c.id}`)}
+                    >
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Sửa
+                    </button>
+                    <ConfirmDialog
+                      title="Xóa khóa học"
+                      description={`Bạn có chắc chắn muốn xóa "${c.title}"?`}
+                      onConfirm={() => handleDelete(c.id)}
+                      trigger={
+                        <button className="flex items-center text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-lg">
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Xóa
+                        </button>
+                      }
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {sorted.length === 0 && (
-        <p className="text-center text-white/70 py-4">
-          Không có khóa học nào phù hợp.
-        </p>
+        <p className="text-center text-gray-600 py-4">Không có khóa học nào phù hợp.</p>
       )}
     </div>
   );

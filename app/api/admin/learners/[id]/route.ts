@@ -49,8 +49,62 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // 📚 Lộ trình học (Enrollments) của học viên
+    const enrollments = await prisma.enrollment.findMany({
+      where: { userId: learnerId },
+      include: { course: true },
+      orderBy: { enrolledAt: "desc" },
+    });
+
+    // 🪪 Chứng chỉ đã cấp cho học viên
+    const certificates = await prisma.certificate.findMany({
+      where: { userId: learnerId },
+      include: { course: true },
+      orderBy: { issuedAt: "desc" },
+    });
+
+    const now = new Date();
+    const enrollmentsMapped = enrollments.map((e) => {
+      let progress = 0;
+      if ((e as any).status === "COMPLETED") {
+        progress = 100;
+      } else {
+        const s = (e as any).course.startDate ? new Date((e as any).course.startDate) : null;
+        const ed = (e as any).course.endDate ? new Date((e as any).course.endDate) : null;
+        if (s && ed && ed.getTime() > s.getTime()) {
+          const total = ed.getTime() - s.getTime();
+          const done = Math.max(0, Math.min(total, now.getTime() - s.getTime()));
+          progress = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
+        }
+      }
+      return {
+        id: String(e.id),
+        courseName: e.course.title,
+        progress,
+        status: (e as any).status === "COMPLETED" ? "Completed" : "Studying",
+        lastAccess: ((e as any).updatedAt ?? (e as any).enrolledAt)?.toISOString?.() ?? new Date().toISOString(),
+      };
+    });
+
+    const certificatesMapped = certificates.map((c) => ({
+      id: Number(c.id),
+      courseId: Number((c as any).courseId ?? c.course?.id ?? 0),
+      courseTitle: c.course?.title ?? "—",
+      tokenId: (c as any).tokenId ?? null,
+      issuedAt: (c as any).issuedAt ?? null,
+      status: (c as any).revoked ? "REVOKED" : "VALID",
+      pdfUrl: `/cdn/cert/${c.id}.pdf`,
+      explorerUrl: (c as any).tokenId ? `https://victionscan.io/token/${(c as any).tokenId}` : null,
+    }));
+
+    const payload = {
+      ...learner,
+      enrollments: enrollmentsMapped,
+      certificates: certificatesMapped,
+    };
+
     // ✅ Fix BigInt serialization
-    return NextResponse.json(toSerializable(learner));
+    return NextResponse.json(toSerializable(payload));
   } catch (err) {
     console.error("❌ GET /api/admin/learners/[id] error:", err);
     return NextResponse.json(

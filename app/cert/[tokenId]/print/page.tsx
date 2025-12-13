@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type CertDetailData = {
   tokenId: string;
@@ -19,9 +19,9 @@ type CertDetailData = {
 export default function CertPrintPage({
   params,
 }: {
-  params: Promise<{ tokenId: string }>;
+  params: { tokenId: string };
 }) {
-  const { tokenId } = use(params);
+  const { tokenId } = params;
   const [data, setData] = useState<CertDetailData | null>(null);
 
   useEffect(() => {

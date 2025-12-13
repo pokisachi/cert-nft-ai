@@ -12,6 +12,6 @@ export async function GET() {
     return NextResponse.json(pinned);
   } catch (error) {
     console.error("[GET /api/notifications/pinned]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json([]);
   }
 }

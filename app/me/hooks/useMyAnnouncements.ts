@@ -19,13 +19,14 @@ export type AnnouncementsResponse = {
   unreadCount: number;
 };
 
-export function useMyAnnouncements(limit = 5) {
+export function useMyAnnouncements(limit = 5, enabled = true) {
   const qc = useQueryClient();
 
   const list = useQuery<AnnouncementsResponse>({
     queryKey: ['me', 'announcements', { limit }],
     queryFn: () => apiFetch<AnnouncementsResponse>(`/api/me/announcements?limit=${limit}&offset=0`),
     staleTime: 1000 * 60 * 5,
+    enabled,
   });
 
   const markRead = useMutation({

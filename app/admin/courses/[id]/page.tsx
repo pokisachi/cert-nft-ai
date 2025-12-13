@@ -1,8 +1,7 @@
 import { CourseForm } from "../_components/CourseForm";
-import { use } from "react";
 
-export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params); 
+export default function EditCoursePage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
   return (
     <div className="max-w-2xl mx-auto mt-8">

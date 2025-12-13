@@ -98,54 +98,40 @@ export function CourseForm({ mode, id }: CourseFormProps) {
   }, [mode, id, form]);
 
   // ✅ Upload thật + preview đúng cách
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Hiển thị preview tạm
+  const uploadFile = async (file: File) => {
     const blobPreview = URL.createObjectURL(file);
     setPreviewUrl(blobPreview);
     setFileName(file.name);
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      toast({
-        title: "Định dạng ảnh không hợp lệ",
-        description: "Chỉ chấp nhận PNG, JPG, WEBP",
-        variant: "destructive",
-      });
+      toast({ title: "Định dạng ảnh không hợp lệ", description: "Chỉ chấp nhận PNG, JPG, WEBP", variant: "destructive" });
       return;
     }
 
-    // Upload lên server (API /api/upload)
     const formData = new FormData();
     formData.append("file", file);
     formData.append("type", "courses");
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (res.ok && data?.url) {
-        form.setValue("thumbnail", data.url); // ✅ URL thật (VD: /courses/1760798198172.png)
-        setPreviewUrl(data.url); // cập nhật preview thật
+        form.setValue("thumbnail", data.url);
+        setPreviewUrl(data.url);
         toast({ title: "Ảnh tải lên thành công!" });
       } else {
-        toast({
-          title: "Upload ảnh thất bại",
-          description: data?.error ?? "Vui lòng thử lại.",
-          variant: "destructive",
-        });
+        toast({ title: "Upload ảnh thất bại", description: data?.error ?? "Vui lòng thử lại.", variant: "destructive" });
       }
     } catch (err) {
-      toast({
-        title: "Lỗi kết nối server upload",
-        variant: "destructive",
-      });
+      toast({ title: "Lỗi kết nối server upload", variant: "destructive" });
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    uploadFile(file);
   };
 
   // ✅ Gửi dữ liệu tạo/sửa khóa học
@@ -216,17 +202,17 @@ export function CourseForm({ mode, id }: CourseFormProps) {
 
     return (
       <div className="relative" ref={ref}>
-        <button type="button" onClick={() => setOpen(!open)} className="h-11 w-full rounded-lg border border-[#3b4354] bg-[#0f1318] text-white text-left px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+        <button type="button" onClick={() => setOpen(!open)} className="h-11 w-full rounded-lg border border-gray-300 bg-white text-gray-900 text-left px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
           {display || (placeholder || "mm/dd/yyyy")}
         </button>
         {open && (
-          <div className="absolute z-20 mt-2 w-80 rounded-lg border border-[#3b4354] bg-[#1c1f27] shadow-lg">
+          <div className="absolute z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between p-2">
-              <button type="button" onClick={() => setMonth(month.subtract(1, "month"))} className="p-1 rounded hover:bg-[#272b33]"><ChevronLeft className="h-4 w-4 text-white/80" /></button>
-              <div className="text-white font-semibold">{month.format("MMMM YYYY")}</div>
-              <button type="button" onClick={() => setMonth(month.add(1, "month"))} className="p-1 rounded hover:bg-[#272b33]"><ChevronRight className="h-4 w-4 text-white/80" /></button>
+              <button type="button" onClick={() => setMonth(month.subtract(1, "month"))} className="p-1 rounded hover:bg-gray-100"><ChevronLeft className="h-4 w-4 text-gray-700" /></button>
+              <div className="text-gray-800 font-semibold">{month.format("MMMM YYYY")}</div>
+              <button type="button" onClick={() => setMonth(month.add(1, "month"))} className="p-1 rounded hover:bg-gray-100"><ChevronRight className="h-4 w-4 text-gray-700" /></button>
             </div>
-            <div className="grid grid-cols-7 gap-1 px-2 text-xs text-white/60">
+            <div className="grid grid-cols-7 gap-1 px-2 text-xs text-gray-500">
               {"CN T2 T3 T4 T5 T6 T7".split(" ").map((d) => (
                 <div key={d} className="text-center py-1">{d}</div>
               ))}
@@ -244,7 +230,7 @@ export function CourseForm({ mode, id }: CourseFormProps) {
                       onChange(d.format("YYYY-MM-DD"));
                       setOpen(false);
                     }}
-                    className={`h-9 rounded text-sm ${inMonth ? "text-white" : "text-white/40"} ${selected ? "bg-indigo-600" : isToday ? "bg-[#2a2f3a]" : "hover:bg-[#272b33]"}`}
+                    className={`h-9 rounded text-sm ${inMonth ? "text-gray-900" : "text-gray-400"} ${selected ? "bg-blue-600 text-white" : isToday ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-100"}`}
                   >
                     {d.date()}
                   </button>
@@ -258,94 +244,111 @@ export function CourseForm({ mode, id }: CourseFormProps) {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-white">
-      <Card variant="dark" className="border-[#3b4354]">
-        <CardHeader>
-          <CardTitle>Thông tin khóa học</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div>
-            <label className="block font-medium mb-1 text-white/80">Tên khóa học *</label>
-            <Input className="h-11 rounded-lg border border-[#3b4354] bg-[#0f1318] text-white placeholder-white/60 focus-visible:ring-indigo-500/50" placeholder="VD: Blockchain Cơ Bản" {...form.register("title")} />
-          </div>
-          <div>
-            <label className="block font-medium mb-1 text-white/80">Danh mục *</label>
-            <Input className="h-11 rounded-lg border border-[#3b4354] bg-[#0f1318] text-white placeholder-white/60 focus-visible:ring-indigo-500/50" placeholder="VD: Công nghệ" {...form.register("category")} />
-          </div>
-          <div>
-            <label className="block font-medium mb-1 text-white/80">Mô tả chi tiết</label>
-            <div className="border border-[#3b4354] rounded-lg bg-[#0f1318]">
-              <SafeReactQuill value={form.watch("description") || ""} onChange={(value: string) => form.setValue("description", value)} />
+    <form id="course-form" onSubmit={form.handleSubmit(onSubmit)}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Thông tin khóa học</h2>
+            <div className="space-y-5">
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Tên khóa học *</label>
+                <Input className="h-11 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus-visible:ring-blue-500" placeholder="VD: Blockchain Cơ Bản" {...form.register("title")} />
+              </div>
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Danh mục *</label>
+                <select {...form.register("category")} className="h-11 rounded-lg border border-gray-300 px-3 w-full bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Chọn danh mục</option>
+                  <option value="Công nghệ">Công nghệ</option>
+                  <option value="Kinh doanh">Kinh doanh</option>
+                  <option value="Thiết kế">Thiết kế</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Mô tả chi tiết</label>
+                <div className="border border-gray-200 rounded-lg bg-white">
+                  <SafeReactQuill value={form.watch("description") || ""} onChange={(value: string) => form.setValue("description", value)} />
+                </div>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card variant="dark" className="border-[#3b4354]">
-        <CardHeader>
-          <CardTitle>Lịch trình</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-medium mb-1 text-white/80">Ngày bắt đầu</label>
-              <DatePicker value={form.watch("startDate") || ""} onChange={(v) => form.setValue("startDate", v)} placeholder="mm/dd/yyyy" />
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Thời gian đào tạo</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Ngày bắt đầu</label>
+                <DatePicker value={form.watch("startDate") || ""} onChange={(v) => form.setValue("startDate", v)} placeholder="mm/dd/yyyy" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1 text-gray-700">Ngày kết thúc</label>
+                <DatePicker value={form.watch("endDate") || ""} onChange={(v) => form.setValue("endDate", v)} placeholder="mm/dd/yyyy" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700">Ngày thi dự kiến</label>
+                <DatePicker value={form.watch("examDateExpected") || ""} onChange={(v) => form.setValue("examDateExpected", v)} placeholder="mm/dd/yyyy" />
+              </div>
             </div>
-            <div>
-              <label className="block font-medium mb-1 text-white/80">Ngày kết thúc</label>
-              <DatePicker value={form.watch("endDate") || ""} onChange={(v) => form.setValue("endDate", v)} placeholder="mm/dd/yyyy" />
+          </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <div className="sticky top-24 space-y-8">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Trạng thái & Hiển thị</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700">Trạng thái *</label>
+                  <select {...form.register("status")} className="h-11 rounded-lg border border-gray-300 px-3 w-full bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="UPCOMING">UPCOMING</option>
+                    <option value="ONGOING">ONGOING</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </select>
+                </div>
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="accent-green-600 h-4 w-4" {...form.register("isPublic")} />
+                  <span className="text-gray-700">Công khai khóa học</span>
+                </label>
+              </div>
             </div>
-          </div>
-          <div className="mt-4">
-            <label className="block font-medium mb-1 text-white/80">Ngày thi dự kiến</label>
-            <DatePicker value={form.watch("examDateExpected") || ""} onChange={(v) => form.setValue("examDateExpected", v)} placeholder="mm/dd/yyyy" />
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card variant="dark" className="border-[#3b4354]">
-        <CardHeader>
-          <CardTitle>Cài đặt hiển thị</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div>
-            <label className="block font-medium mb-1 text-white/80">Trạng thái *</label>
-            <select {...form.register("status")} className="h-11 rounded-lg border border-[#3b4354] px-3 w-full bg-[#0f1318] text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-              <option value="UPCOMING">UPCOMING</option>
-              <option value="ONGOING">ONGOING</option>
-              <option value="COMPLETED">COMPLETED</option>
-              <option value="CLOSED">CLOSED</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" className="accent-indigo-600 h-4 w-4" {...form.register("isPublic")} />
-            <label className="text-white/80">Công khai khóa học</label>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Ảnh bìa khóa học</h2>
+              <input id="thumbnailFile" type="file" accept="image/*" onChange={handleFileUpload} className="sr-only" />
+              <div
+                className="border-dashed border-2 border-gray-300 rounded-xl p-6 text-center hover:border-gray-400 transition"
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) uploadFile(file);
+                }}
+              >
+                <label htmlFor="thumbnailFile" className="block cursor-pointer">
+                  <div className="flex flex-col items-center justify-center gap-2 text-gray-600">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-gray-500"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 12v6m0-6l-3 3m3-3l3 3M16 8a4 4 0 1 0-8 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span className="font-medium">Kéo thả hoặc bấm để chọn ảnh</span>
+                    <span className="text-sm text-gray-500">PNG, JPG, WEBP • Tối đa 5MB</span>
+                  </div>
+                </label>
+              </div>
+              {fileName && <div className="mt-3 text-sm text-gray-600">{fileName}</div>}
+              {previewUrl && (
+                <img src={previewUrl} alt="Preview" className="mt-4 w-full max-h-48 object-cover rounded-lg border border-gray-200" />
+              )}
+            </div>
 
-      <Card variant="dark" className="border-[#3b4354]">
-        <CardHeader>
-          <CardTitle>Hình thu nhỏ</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <input id="thumbnailFile" type="file" accept="image/*" onChange={handleFileUpload} className="sr-only" />
-            <label htmlFor="thumbnailFile" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#3b4354] bg-[#0f1318] cursor-pointer text-white">
-              <span>Chọn ảnh</span>
-            </label>
-            <span className="text-white/60 text-sm">{fileName || "Chưa chọn tệp"}</span>
+            {mode === "edit" && (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <button disabled={loading} type="submit" className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
+                  {loading ? "Đang xử lý..." : "Cập nhật khóa học"}
+                </button>
+              </div>
+            )}
           </div>
-          {previewUrl && (
-            <img src={previewUrl} alt="Preview" className="mt-3 w-48 h-32 object-cover rounded-lg border border-[#3b4354]" />
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button disabled={loading} type="submit" className="h-11 rounded-lg bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white w-full md:w-auto">
-            {loading ? "Đang xử lý..." : mode === "create" ? "Tạo khóa học" : "Cập nhật khóa học"}
-          </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </form>
   );
 }

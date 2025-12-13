@@ -1,146 +1,68 @@
- 'use client';
 
-import { useEffect, useState, useMemo, useCallback, memo } from 'react';
-import dynamic from 'next/dynamic';
-const BarChart = dynamic(() => import('react-chartjs-2').then((m) => m.Bar), {
-  ssr: false,
-  loading: () => <div className="h-64 rounded-xl bg-white border border-slate-200 shadow-sm animate-pulse" />,
-});
-const LineChart = dynamic(() => import('react-chartjs-2').then((m) => m.Line), {
-  ssr: false,
-  loading: () => <div className="h-64 rounded-xl bg-white border border-slate-200 shadow-sm animate-pulse" />,
-});
-import {
-  Chart as ChartJS,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-  Title,
-  PointElement,
-  LineElement,
-  Filler,
-} from 'chart.js';
-import { Users, BookOpen, FileText, BadgeCheck, Home } from 'lucide-react';
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
+import { Users, BookOpen, BadgeCheck, Home } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow, format, subDays } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title, PointElement, LineElement, Filler);
-
-const shadowPlugin = {
-  id: 'shadowPlugin',
-  beforeDatasetsDraw(chart: any, _args: any, opts: any) {
-    const c = chart.ctx;
-    c.save();
-    c.shadowColor = (opts && opts.color) || 'rgba(157,166,185,0.35)';
-    c.shadowBlur = (opts && opts.blur) || 12;
-    c.shadowOffsetX = 0;
-    c.shadowOffsetY = 0;
-  },
-  afterDatasetsDraw(chart: any) {
-    chart.ctx.restore();
-  },
-};
-
-ChartJS.register(shadowPlugin as any);
+ 
 
 type DashboardStats = {
   learners: number;
   courses: number;
   exams: number;
   certificates: number;
+  notifications?: number;
 };
 
-type ChartData = Record<string, number>;
-type TimeRange = 'day' | 'week' | 'month' | 'year';
-type StatType = 'learners' | 'courses' | 'exams' | 'certificates';
+ 
 
-const ChartPanel = memo(function ChartPanel({
-  title,
-  color,
-  data,
-  range,
-  type,
-  onRangeChange,
-  makeBarChart,
-  makeLineChart,
-  icon,
-  variant = 'bar',
-}: {
-  title: string;
-  color: string;
-  data: ChartData;
-  range: TimeRange;
-  type: StatType;
-  onRangeChange: (type: StatType, newRange: TimeRange) => void;
-  makeBarChart: (label: string, values: ChartData, color: string) => any;
-  makeLineChart: (label: string, values: ChartData, color: string) => any;
-  icon?: React.ReactNode;
-  variant?: 'bar' | 'line';
-}) {
-  const total = Object.values(data).reduce((a, b) => a + b, 0);
-  const vals = Object.values(data);
-  const delta = vals.length > 1 ? Math.round(((vals[vals.length - 1] - vals[0]) / Math.max(1, vals[0])) * 100) : 0;
-  const chart = variant === 'line' ? makeLineChart(title, data, color) : makeBarChart(title, data, color);
+function StatsCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
   return (
-    <Card className="p-0">
-      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <CardTitle className="inline-flex items-center gap-2 text-slate-900">{icon}{title}</CardTitle>
-        <div role="tablist" aria-label="Khoảng thời gian" className="inline-flex rounded-md border border-slate-300 bg-white shadow-sm">
-          {(['day','week','month','year'] as TimeRange[]).map((key) => (
-            <Button
-              key={key}
-              role="tab"
-              aria-selected={range === key}
-              onClick={() => onRangeChange(type, key)}
-              variant={range === key ? 'secondary' : 'outline'}
-              size="sm"
-              className={cn(range === key ? 'bg-slate-900 text-white hover:bg-slate-900/90' : 'text-slate-700 hover:bg-slate-100')}
-            >
-              {key === 'day' ? 'Ngày' : key === 'week' ? 'Tuần' : key === 'month' ? 'Tháng' : 'Năm'}
-            </Button>
-          ))}
+    <Card className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className={cn('h-12 w-12 rounded-full flex items-center justify-center', color)}>{icon}</div>
+        <div className="flex-1">
+          <div className="text-sm text-slate-600">{title}</div>
+          <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-baseline gap-2 mb-2">
-          <div className="text-2xl font-semibold text-slate-900">{total}</div>
-          <div className={delta >= 0 ? 'text-emerald-600 text-sm' : 'text-red-600 text-sm'}>
-            {delta >= 0 ? '+' : ''}{delta}%
-          </div>
-          <div className="text-slate-500 text-sm">30 ngày gần đây</div>
-        </div>
-        <div className="h-64">
-          {variant === 'line' ? <LineChart {...chart} /> : <BarChart {...chart} />}
-        </div>
-      </CardContent>
+      </div>
     </Card>
   );
-})
+}
+
+ 
+
+ 
+
+type ActivityItem = {
+  id: string;
+  actor: 'ADMIN' | 'SYSTEM' | 'USER';
+  name: string;
+  action: 'CREATE_COURSE' | 'CREATE_EXAM' | 'ISSUE_CERTIFICATE' | 'USER_REGISTER';
+  message: string;
+  time: string | Date | null;
+  status: 'New' | 'Success' | 'System';
+};
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [charts, setCharts] = useState<Record<StatType, ChartData>>({
-    learners: {},
-    courses: {},
-    exams: {},
-    certificates: {},
-  });
-  const [range, setRange] = useState<Record<StatType, TimeRange>>({
-    learners: 'day',
-    courses: 'day',
-    exams: 'day',
-    certificates: 'day',
-  });
-  const [globalRange, setGlobalRange] = useState<TimeRange>('day');
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  
+  const [studentSeries, setStudentSeries] = useState<Array<{ label: string; count: number }>>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [examSeries, setExamSeries] = useState<Array<{ label: string; count: number }>>([]);
+  const [examLoading, setExamLoading] = useState(false);
 
-  // Lấy dữ liệu tổng quan
   useEffect(() => {
     const ac = new AbortController();
-    fetch('/api/admin/stats/full', { signal: ac.signal })
+    fetch('/api/admin/stats', { signal: ac.signal })
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setStats(json.data);
@@ -149,259 +71,343 @@ export default function AdminDashboard() {
     return () => ac.abort();
   }, []);
 
-  // Lấy dữ liệu cho từng biểu đồ
+  
+
   useEffect(() => {
     const ac = new AbortController();
-    const entries = Object.entries(range) as [StatType, TimeRange][];
-    Promise.all(
-      entries.map(([t, r]) =>
-        fetch(`/api/admin/stats/detail?type=${t}&range=${r}`, { signal: ac.signal })
-          .then((resp) => resp.json())
-          .catch(() => ({ data: {} }))
-      )
-    ).then((results) => {
-      setCharts((prev) => {
-        const next = { ...prev };
-        entries.forEach(([t], idx) => {
-          next[t] = results[idx]?.data || {};
-        });
-        return next;
-      });
-    });
+    (async () => {
+      try {
+        const qs1 = new URLSearchParams({ page: '1', size: '20' });
+        const qs2 = new URLSearchParams({ pageSize: '20', sortBy: 'issuedAt', sortDir: 'desc' });
+        const qs3 = new URLSearchParams({ pageSize: '20', sort: 'enrolledAt:desc' });
+        const [coursesRes, examsRes, certsRes, enrollRes] = await Promise.all([
+          fetch(`/api/admin/courses?${qs1.toString()}`, { signal: ac.signal }),
+          fetch(`/api/admin/exam-sessions`, { signal: ac.signal }),
+          fetch(`/api/admin/certificates?${qs2.toString()}`, { signal: ac.signal }),
+          fetch(`/api/admin/enrollments?${qs3.toString()}`, { signal: ac.signal }),
+        ]);
+        const coursesJson = await coursesRes.json().catch(() => ({}));
+        const examsJson = await examsRes.json().catch(() => ({}));
+        const certsJson = await certsRes.json().catch(() => ({}));
+        const enrollJson = await enrollRes.json().catch(() => ({}));
+        const courses = Array.isArray(coursesJson?.data) ? coursesJson.data : [];
+        const exams = Array.isArray(examsJson) ? examsJson : Array.isArray(examsJson?.data) ? examsJson.data : [];
+        const certs = Array.isArray(certsJson?.items) ? certsJson.items : [];
+        const enrolls = Array.isArray(enrollJson?.data) ? enrollJson.data : [];
+
+        const evts: ActivityItem[] = [];
+        evts.push(
+          ...courses.map((c: any) => ({
+            id: `course-${c.id}`,
+            actor: 'ADMIN',
+            name: 'Admin',
+            action: 'CREATE_COURSE',
+            message: `Admin vừa tạo khóa học mới: ${c.title}`,
+            time: c.createdAt,
+            status: 'New',
+          }))
+        );
+        evts.push(
+          ...exams.map((s: any) => ({
+            id: `exam-${s.id}`,
+            actor: 'ADMIN',
+            name: 'Admin',
+            action: 'CREATE_EXAM',
+            message: `Admin vừa tạo kỳ thi: ${s.course?.title || 'Kỳ thi'}`,
+            time: s.date,
+            status: 'New',
+          }))
+        );
+        evts.push(
+          ...certs.map((c: any) => ({
+            id: `cert-${c.id}`,
+            actor: 'SYSTEM',
+            name: 'Hệ thống',
+            action: 'ISSUE_CERTIFICATE',
+            message: `Hệ thống đã cấp chứng chỉ cho ${c.user?.name || 'Học viên'}`,
+            time: c.issuedAt,
+            status: 'Success',
+          }))
+        );
+        evts.push(
+          ...enrolls.map((r: any) => ({
+            id: `enroll-${r.enrollmentId}`,
+            actor: 'USER',
+            name: r.learner?.name || 'Người dùng',
+            action: 'USER_REGISTER',
+            message: `${r.learner?.name || 'Người dùng'} vừa đăng ký tài khoản`,
+            time: r.createdAt,
+            status: 'New',
+          }))
+        );
+
+        evts.sort((a, b) => new Date(b.time || 0 as any).getTime() - new Date(a.time || 0 as any).getTime());
+        setActivities(evts.slice(0, 10));
+      } catch {
+        setActivities([]);
+      }
+    })();
     return () => ac.abort();
-  }, [range]);
+  }, []);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    setStudentLoading(true);
+    const p = new URLSearchParams({ page: '1', pageSize: '100', sort: 'enrolledAt:desc' });
+    fetch(`/api/admin/enrollments?${p.toString()}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((json) => {
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        const now = new Date();
+        const labels = Array.from({ length: 7 }, (_v, i) => {
+          const d = subDays(now, 6 - i);
+          const key = format(d, 'yyyy-MM-dd');
+          return { key, label: format(d, 'dd/MM') };
+        });
+        const map = new Map(labels.map(({ key }) => [key, 0] as [string, number]));
+        rows.forEach((row: any) => {
+          const dt = row?.createdAt ? new Date(row.createdAt) : null;
+          if (!dt) return;
+          const k = format(dt, 'yyyy-MM-dd');
+          if (map.has(k)) map.set(k, (map.get(k) || 0) + 1);
+        });
+        setStudentSeries(labels.map(({ label, key }) => ({ label, count: map.get(key) || 0 })));
+      })
+      .catch(() => {
+        const now = new Date();
+        const series = Array.from({ length: 7 }, (_v, i) => {
+          const d = subDays(now, 6 - i);
+          return { label: format(d, 'dd/MM'), count: 0 };
+        });
+        setStudentSeries(series);
+      })
+      .finally(() => setStudentLoading(false));
+    return () => ac.abort();
+  }, []);
+
+  
+
+  useEffect(() => {
+    const ac = new AbortController();
+    setExamLoading(true);
+    fetch(`/api/admin/exam-sessions`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((json) => {
+        const rows = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
+        const now = new Date();
+        const labels = Array.from({ length: 7 }, (_v, i) => {
+          const d = subDays(now, 6 - i);
+          const key = format(d, 'yyyy-MM-dd');
+          return { key, label: format(d, 'dd/MM') };
+        });
+        const map = new Map(labels.map(({ key }) => [key, 0] as [string, number]));
+        rows.forEach((row: any) => {
+          const dt = row?.date ? new Date(row.date) : null;
+          if (!dt) return;
+          const k = format(dt, 'yyyy-MM-dd');
+          if (map.has(k)) map.set(k, (map.get(k) || 0) + 1);
+        });
+        setExamSeries(labels.map(({ label, key }) => ({ label, count: map.get(key) || 0 })));
+      })
+      .catch(() => {
+        const now = new Date();
+        const series = Array.from({ length: 7 }, (_v, i) => {
+          const d = subDays(now, 6 - i);
+          return { label: format(d, 'dd/MM'), count: 0 };
+        });
+        setExamSeries(series);
+      })
+      .finally(() => setExamLoading(false));
+    return () => ac.abort();
+  }, []);
 
   const summary = useMemo(() => {
-    const sums = {
-      learners: Object.values(charts.learners).reduce((a, b) => a + b, 0),
-      courses: Object.values(charts.courses).reduce((a, b) => a + b, 0),
-      exams: Object.values(charts.exams).reduce((a, b) => a + b, 0),
-      certificates: Object.values(charts.certificates).reduce((a, b) => a + b, 0),
-    } as DashboardStats;
-    const allZero = Object.values(sums).every((v) => v === 0);
-    return !allZero && sums ? sums : (stats || { learners: 0, courses: 0, exams: 0, certificates: 0 });
-  }, [charts, stats]);
+    return stats || { learners: 0, courses: 0, exams: 0, certificates: 0, notifications: 0 };
+  }, [stats]);
 
   const cards = useMemo(() => {
     return [
-      { title: 'Học viên', value: summary.learners, icon: <Users className="h-4 w-4" /> },
-      { title: 'Khóa học', value: summary.courses, icon: <BookOpen className="h-4 w-4" /> },
-      { title: 'Kỳ thi', value: summary.exams, icon: <FileText className="h-4 w-4" /> },
-      { title: 'Chứng chỉ', value: summary.certificates, icon: <BadgeCheck className="h-4 w-4" /> },
+      { title: 'Tổng học viên', value: summary.learners, icon: <Users className="h-6 w-6 text-blue-600" />, color: 'bg-blue-50' },
+      { title: 'NFT đã cấp', value: summary.certificates, icon: <BadgeCheck className="h-6 w-6 text-emerald-600" />, color: 'bg-emerald-50' },
+      { title: 'Khóa học Active', value: summary.courses, icon: <BookOpen className="h-6 w-6 text-amber-600" />, color: 'bg-amber-50' },
     ];
   }, [summary]);
 
-  const makeBarChart = useCallback((label: string, values: ChartData, color: string) => {
-    const labels = Object.keys(values).sort();
-    const dataset = labels.map((k) => values[k]);
-    return {
-      data: {
-        labels,
-        datasets: [
-          {
-            label,
-            data: dataset,
-            backgroundColor: color || 'rgba(99,102,241,0.6)',
-            hoverBackgroundColor: color || 'rgba(99,102,241,0.8)',
-            borderColor: '#CBD5E1',
-            borderWidth: 1,
-            borderRadius: 8,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        interaction: { intersect: false, mode: 'index' },
-        animation: { duration: 450, easing: 'easeOutQuart' },
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: '', font: { size: 16 } },
-        },
-        scales: {
-          x: { grid: { color: 'rgba(226,232,240,0.7)' }, ticks: { color: '#475569' } },
-          y: { beginAtZero: true, min: 0, suggestedMin: 0, grid: { color: 'rgba(226,232,240,0.7)' }, ticks: { color: '#475569' } },
-        },
-      },
-    };
-  }, []);
+  const pieData = useMemo(() => {
+    const issued = summary?.certificates ?? 0;
+    const pending = 0;
+    return [
+      { name: 'Đã cấp', value: issued },
+      { name: 'Đang chờ', value: pending },
+    ];
+  }, [summary]);
 
-  const makeLineChart = useCallback((label: string, values: ChartData, color: string) => {
-    const labels = Object.keys(values).sort();
-    const dataset = labels.map((k) => values[k]);
-    const useLabels = [''].concat(labels);
-    const useDataset = [0].concat(dataset);
+  
 
-    const bg = (ctx: any) => {
-      const chart = ctx.chart;
-      const { ctx: c, chartArea } = chart;
-      if (!chartArea) return 'rgba(99,102,241,0.12)';
-      const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-      g.addColorStop(0, 'rgba(99,102,241,0.18)');
-      g.addColorStop(1, 'rgba(99,102,241,0.00)');
-      return g;
-    };
-    return {
-      data: {
-        labels: useLabels,
-        datasets: [
-          {
-            label,
-            data: useDataset,
-            borderColor: color || '#6366F1',
-            backgroundColor: bg,
-            borderWidth: 3,
-            borderCapStyle: 'round',
-            borderJoinStyle: 'round',
-            fill: 'origin',
-            tension: 0.4,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            pointHitRadius: 10,
-            pointBorderWidth: 2,
-            pointBorderColor: color || '#6366F1',
-            pointBackgroundColor: '#ffffff',
-            spanGaps: false,
-            clip: false,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        interaction: { intersect: false, mode: 'index' },
-        animation: { duration: 450, easing: 'easeOutQuart' },
-        plugins: { legend: { display: false }, title: { display: false }, shadowPlugin: { color: 'rgba(157,166,185,0.25)', blur: 8 } },
-        scales: {
-          x: { grid: { color: 'rgba(226,232,240,0.7)' }, ticks: { color: '#475569' } },
-          y: { beginAtZero: true, min: 0, suggestedMin: 0, grid: { color: 'rgba(226,232,240,0.7)' }, ticks: { color: '#475569' } },
-        },
-      },
-    };
-  }, []);
-
-  const handleRangeChange = useCallback((type: StatType, newRange: TimeRange) => {
-    setRange((prev) => ({ ...prev, [type]: newRange }));
-  }, []);
-
-  const setAllRanges = useCallback((newRange: TimeRange) => {
-    setGlobalRange(newRange);
-    setRange({ learners: newRange, courses: newRange, exams: newRange, certificates: newRange });
-  }, []);
+  
 
   if (!stats)
     return (
-      <main className="p-6 md:p-8 space-y-8 bg-[#F7F8FA] text-slate-800 min-h-screen">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6 md:mb-8 space-y-3">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-1 w-24" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[0,1,2,3].map((i) => (
-              <Card key={i} className="p-6">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-6 w-16 mt-3" />
-              </Card>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mt-6 md:mt-8">
-            {[0,1,2,3].map((i) => (
-              <Card key={i} className="p-0">
-                <CardContent className="p-0">
-                  <Skeleton className="h-64 w-full rounded-b-lg" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <section className="space-y-8">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-1 w-24" />
         </div>
-      </main>
-    );
-
-  return (
-    <main className="p-6 md:p-8 space-y-8 bg-[#F7F8FA] text-slate-800 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold inline-flex items-center gap-2 text-slate-900"><Home className="h-5 w-5" />Bảng điều khiển</h1>
-            <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-full mt-3" />
-          </div>
-          <div role="tablist" aria-label="Khoảng thời gian toàn trang" className="inline-flex rounded-md border border-slate-300 bg-white shadow-sm">
-            {(['day','week','month','year'] as TimeRange[]).map((key) => (
-              <Button
-                key={key}
-                role="tab"
-                aria-selected={globalRange === key}
-                onClick={() => setAllRanges(key)}
-                variant={globalRange === key ? 'secondary' : 'outline'}
-                size="sm"
-                className={cn(globalRange === key ? 'bg-slate-900 text-white hover:bg-slate-900/90' : 'text-slate-700 hover:bg-slate-100')}
-              >
-                {key === 'day' ? 'Ngày' : key === 'week' ? 'Tuần' : key === 'month' ? 'Tháng' : 'Năm'}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {cards.map((c) => (
-            <Card key={c.title} className="p-6">
-              <div className="text-sm inline-flex items-center gap-2 text-slate-600">{c.icon}{c.title}</div>
-              <div className="text-3xl font-bold mt-1 text-slate-900 tracking-tight">{c.value}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[0,1,2,3].map((i) => (
+            <Card key={i} className="p-6">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-16 mt-3" />
             </Card>
           ))}
         </div>
+      </section>
+    );
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-        <ChartPanel
-          title="Học viên đăng ký"
-            color="rgba(59,130,246,0.7)"
-            data={charts.learners}
-            range={range.learners}
-            type="learners"
-            onRangeChange={handleRangeChange}
-            makeBarChart={makeBarChart}
-            makeLineChart={makeLineChart}
-            icon={<Users className="h-4 w-4" />}
-            variant="line"
-        />
-        <ChartPanel
-          title="Khóa học được tạo"
-            color="rgba(234,179,8,0.7)"
-            data={charts.courses}
-            range={range.courses}
-            type="courses"
-            onRangeChange={handleRangeChange}
-            makeBarChart={makeBarChart}
-            makeLineChart={makeLineChart}
-            icon={<BookOpen className="h-4 w-4" />}
-            variant="line"
-        />
-        <ChartPanel
-          title="Kỳ thi được mở"
-            color="rgba(34,197,94,0.7)"
-            data={charts.exams}
-            range={range.exams}
-            type="exams"
-            onRangeChange={handleRangeChange}
-            makeBarChart={makeBarChart}
-            makeLineChart={makeLineChart}
-            icon={<FileText className="h-4 w-4" />}
-            variant="line"
-        />
-        <ChartPanel
-          title="Chứng chỉ được cấp"
-            color="rgba(239,68,68,0.7)"
-            data={charts.certificates}
-            range={range.certificates}
-            type="certificates"
-            onRangeChange={handleRangeChange}
-            makeBarChart={makeBarChart}
-            makeLineChart={makeLineChart}
-            icon={<BadgeCheck className="h-4 w-4" />}
-            variant="line"
-        />
+  return (
+    <section className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold inline-flex items-center gap-2 text-slate-900"><Home className="h-5 w-5" />Bảng điều khiển</h1>
+          <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-full mt-3" />
         </div>
       </div>
-    </main>
+
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    {cards.map((c, i) => (
+      <StatsCard key={i} title={c.title} value={c.value} icon={c.icon} color={c.color} />
+    ))}
+  </div>
+
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <Card className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+      <div className="mb-4">
+        <CardTitle className="text-slate-900">Thống kê lượng học viên đăng ký</CardTitle>
+      </div>
+      <div className="h-[420px]">
+        {studentLoading ? (
+          <Skeleton className="h-full w-full rounded-lg" />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={studentSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="studentsFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="label" stroke="#475569" tick={{ fill: '#475569' }} />
+              <YAxis stroke="#475569" tick={{ fill: '#475569' }} allowDecimals={false} />
+              <RTooltip cursor={{ stroke: 'rgba(59,130,246,0.2)' }} />
+              <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={3} fill="url(#studentsFill)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </Card>
+    <Card className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <div className="mb-4">
+        <CardTitle className="text-slate-900">Tỷ lệ cấp chứng chỉ</CardTitle>
+      </div>
+      <div className="h-[420px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={90} outerRadius={120}>
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={index === 0 ? '#10B981' : '#F59E0B'} />
+              ))}
+            </Pie>
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
+  </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="bg-white rounded-2xl shadow-sm border border-gray-100 p-0 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-slate-900">Hoạt động gần đây</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-600">
+                    <th className="px-3 py-2">Người dùng</th>
+                    <th className="px-3 py-2">Hành động</th>
+                    <th className="px-3 py-2">Thời gian</th>
+                    <th className="px-3 py-2">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activities.map((a) => (
+                    <tr key={a.id} className="border-t border-slate-200">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+                            {a.actor === 'ADMIN' ? 'A' : a.actor === 'SYSTEM' ? 'S' : (a.name?.[0] || 'U')}
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900">{a.name}</div>
+                            <div className="text-xs text-slate-500">{a.actor}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="text-slate-900">{a.message}</div>
+                        <div className="text-xs text-slate-500">{a.action}</div>
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {a.time ? formatDistanceToNow(new Date(a.time), { addSuffix: true, locale: vi }) : '—'}
+                      </td>
+                      <td className="px-3 py-2">
+                        {a.status === 'Success' ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">Success</Badge>
+                        ) : a.status === 'System' ? (
+                          <Badge className="bg-slate-100 text-slate-700 border border-slate-200">System</Badge>
+                        ) : (
+                          <Badge className="bg-blue-50 text-blue-700 border border-blue-200">New</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {activities.length === 0 && (
+                    <tr className="border-t border-slate-200">
+                      <td className="px-3 py-4 text-center text-slate-500" colSpan={4}>Không có hoạt động gần đây</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="mb-4">
+            <CardTitle className="text-slate-900">Kỳ thi được tổ chức</CardTitle>
+          </div>
+          <div className="h-[350px]">
+            {examLoading ? (
+              <Skeleton className="h-full w-full rounded-lg" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={examSeries.map((d, i) => ({ ...d, color: i % 2 === 0 ? '#3B82F6' : '#60A5FA' }))} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="label" stroke="#475569" tick={{ fill: '#475569' }} />
+                  <YAxis stroke="#475569" tick={{ fill: '#475569' }} allowDecimals={false} />
+                  <RTooltip cursor={{ fill: 'rgba(59,130,246,0.08)' }} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {examSeries.map((entry, idx) => (
+                      <Cell key={`cell-${idx}`} fill={idx % 2 === 0 ? '#3B82F6' : '#60A5FA'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+    </section>
   );
 }
-

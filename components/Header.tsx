@@ -20,7 +20,7 @@ export default function Header() {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { data: notifData, isLoading: notifLoading, markAllRead } = useMyAnnouncements(5);
+  const { data: notifData, isLoading: notifLoading, markAllRead } = useMyAnnouncements(5, !!user);
 
   // ✅ Click logo → Admin vào /admin, user thường vào /
   const handleLogoClick = (e: React.MouseEvent) => {
