@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const now = new Date();
   const mapped = enrollments.map((e) => {
     const t = e.course.thumbnail || "";
     let thumbnailUrl = "/default-thumbnail.png";
@@ -28,6 +29,19 @@ export async function GET(req: Request) {
         thumbnailUrl = `${baseUrl}/courses/${t}`;
       }
     }
+
+    let progress = 0;
+    if (e.status === "COMPLETED") {
+      progress = 100;
+    } else {
+      const s = e.course.startDate ? new Date(e.course.startDate) : null;
+      const ed = e.course.endDate ? new Date(e.course.endDate) : null;
+      if (s && ed && ed.getTime() > s.getTime()) {
+        const total = ed.getTime() - s.getTime();
+        const done = Math.max(0, Math.min(total, now.getTime() - s.getTime()));
+        progress = Math.max(0, Math.min(100, Math.floor((done / total) * 100)));
+      }
+    }
     return {
       id: e.course.id,
       title: e.course.title,
@@ -37,6 +51,8 @@ export async function GET(req: Request) {
       examDate: e.course.examDateExpected,
       status: e.status,
       thumbnailUrl,
+      progress,
+      href: `/courses/${e.course.id}`,
     };
   });
 

@@ -214,26 +214,33 @@ export default function MePage() {
                 <div className="p-4 space-y-4">
                   {courses.length === 0 && <div className="text-gray-600">Chưa có khóa học.</div>}
                   {courses.map((c: any, idx: number) => (
-                    <div key={c.id || idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4">
-                      <div className="w-full sm:w-40 h-24 rounded-lg bg-gray-100 border border-gray-200" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="text-lg font-semibold text-gray-900">{c.title || "Khóa học"}</div>
-                          <Link href={c.href || "#"} className="inline-flex">
-                            <Button className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white">Tiếp tục học</Button>
-                          </Link>
+                    <Link
+                      key={c.id || idx}
+                      href={c.href || `/courses/${c.id || ''}`}
+                      className="block group rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
+                    >
+                      <div className="flex">
+                        <div className="w-2/5 relative h-24 sm:h-28 md:h-32 overflow-hidden">
+                          <img
+                            src={c.thumbnailUrl || c.thumbnail || c.image || `https://picsum.photos/seed/profile-continue-${c.id || idx}/800/450`}
+                            alt={c.title || "Khóa học"}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          />
                         </div>
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-sm text-gray-600">
-                            <span>Tiến độ</span>
-                            <span>{typeof c.progress === "number" ? `${c.progress}%` : "0%"}</span>
-                          </div>
-                          <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
-                            <div className="h-2 rounded-full bg-indigo-600" style={{ width: `${typeof c.progress === "number" ? c.progress : 0}%` }} />
+                        <div className="w-3/5 p-4">
+                          <div className="text-lg font-bold text-gray-900">{c.title || "Khóa học"}</div>
+                          <div className="mt-2">
+                            <div className="h-2 w-full rounded-full bg-gray-200">
+                              <div
+                                className="h-2 rounded-full bg-indigo-600"
+                                style={{ width: `${typeof c.progress === 'number' ? c.progress : 0}%` }}
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">Đã hoàn thành {typeof c.progress === 'number' ? c.progress : 0}%</div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>

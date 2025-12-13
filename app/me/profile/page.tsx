@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ export default function ProfileFormPage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,6 +47,32 @@ export default function ProfileFormPage() {
     setAvatarPreview(url);
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/me/profile", { cache: "no-store" });
+        if (!res.ok) return;
+        const u = await res.json();
+        if (cancelled) return;
+        setForm({
+          name: u?.name ?? "",
+          dob: u?.dob ? new Date(u.dob).toISOString().slice(0, 10) : "",
+          idcard: u?.idcard ?? "",
+          phone: u?.phone ?? "",
+          address: u?.address ?? "",
+        });
+        if (u?.avatarUrl) setAvatarPreview(u.avatarUrl);
+      } finally {
+        if (!cancelled) setLoadingProfile(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="w-full max-w-4xl mx-auto py-10 px-6">
@@ -62,6 +89,10 @@ export default function ProfileFormPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          {loadingProfile ? (
+            <div className="py-10 text-center text-gray-600">Đang tải thông tin...</div>
+          ) : (
+            <>
           <div className="flex items-center gap-6 mb-8">
             <div className="relative">
               <div className="h-24 w-24 rounded-full overflow-hidden border border-gray-200 bg-gray-100">
@@ -176,6 +207,8 @@ export default function ProfileFormPage() {
             <p className={`mt-4 p-3 rounded-md text-center ${message.startsWith("❌") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
               {message}
             </p>
+          )}
+            </>
           )}
         </div>
       </div>
