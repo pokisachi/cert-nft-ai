@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
 import { fetcher } from "@/lib/fetcher";
-import { Download, Eye, Trash2, Copy } from "lucide-react";
+import { Download, Eye, Trash2, Copy, ShieldCheck } from "lucide-react";
 
 type Learner = {
   id: number;
@@ -219,6 +219,26 @@ export default function LearnersPage() {
                             Chi tiết
                           </Button>
                         </Link>
+                        <Button
+                          className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
+                          onClick={async () => {
+                            if (confirm("Cấp quyền ADMIN cho học viên này?")) {
+                              try {
+                                await fetcher(`/api/admin/learners/${u.id}`, {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ role: "ADMIN" }),
+                                });
+                                toast.success("Đã cấp quyền ADMIN");
+                                refetch();
+                              } catch (err) {
+                                toast.error("Không thể cấp quyền ADMIN");
+                              }
+                            }
+                          }}
+                        >
+                          <ShieldCheck className="h-4 w-4 mr-2" />
+                          Cấp Admin
+                        </Button>
                         <Button
                           className="h-9 bg-rose-600 text-white hover:bg-rose-700"
                           onClick={async () => {

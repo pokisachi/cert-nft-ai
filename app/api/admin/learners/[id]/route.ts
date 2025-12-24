@@ -158,6 +158,73 @@ export async function PUT(
 }
 
 // =====================
+// 🧩 PATCH - Cấp/Gỡ quyền admin cho người dùng
+// =====================
+export async function PATCH(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const actor = await getAuthUser(req);
+    if (!actor || actor.role !== Role.ADMIN) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const targetId = Number(id);
+    if (isNaN(targetId)) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const nextRoleRaw = body.role;
+    if (!nextRoleRaw || typeof nextRoleRaw !== "string") {
+      return NextResponse.json({ error: "Missing role" }, { status: 400 });
+    }
+
+    const nextRole =
+      nextRoleRaw === "ADMIN"
+        ? Role.ADMIN
+        : nextRoleRaw === "LEARNER"
+        ? Role.LEARNER
+        : null;
+
+    if (!nextRole) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!target) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Không cho tự hạ quyền chính mình qua API này (an toàn)
+    if (actor.id === targetId && nextRole !== Role.ADMIN) {
+      return NextResponse.json({ error: "Cannot demote self" }, { status: 400 });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: targetId },
+      data: { role: nextRole },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    return NextResponse.json({ ok: true, user: updated });
+  } catch (err) {
+    console.error("❌ PATCH /api/admin/learners/[id] error:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+// =====================
 // 🧩 DELETE - Xóa học viên an toàn
 // =====================
 export async function DELETE(

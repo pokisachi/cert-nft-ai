@@ -89,6 +89,7 @@ export default function HomePage() {
       
       {/* Features Section (Stats removed) */}
       <StatsAndFeatures 
+        stats={home.home.stats.items}
         features={home.home.features}
         theme="dark"
       />

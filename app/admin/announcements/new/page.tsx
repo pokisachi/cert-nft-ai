@@ -19,9 +19,10 @@ const schema = z.object({
 export default function NewAnnouncementPage() {
   const router = useRouter();
   const [courses, setCourses] = useState<any[]>([]);
-  const { register, handleSubmit, formState } = useForm({
+  const { register, handleSubmit, formState, watch } = useForm({
     resolver: zodResolver(schema),
   });
+  const [typeSelect, setTypeSelect] = useState<string>("Hệ thống");
 
   useEffect(() => {
     (async () => {
@@ -43,35 +44,95 @@ export default function NewAnnouncementPage() {
     }
   };
 
+  const titlePreview = watch("title");
+  const contentPreview = watch("content");
+  const rolePreview = watch("targetRole");
+  const pinnedPreview = watch("isPinned");
+
   return (
-    <main className="p-6 bg-[#111318] min-h-[calc(100vh-64px)]">
-      <div className="max-w-xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-4 text-white">Tạo thông báo mới</h1>
-        <Card variant="dark" className="p-6 border-[#3b4354]">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-            <Input {...register("title")} placeholder="Tiêu đề" className="border border-[#3b4354] bg-[#12151b] text-white" />
-            <textarea {...register("content")} placeholder="Nội dung" className="rounded-md border border-[#3b4354] bg-[#12151b] text-white px-3 py-2 h-32" />
-            <select {...register("targetRole")} className="rounded-md border border-[#3b4354] bg-[#1c1f27] text-white px-3 py-2">
-              <option value="LEARNER">LEARNER</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="ALL">ALL</option>
-            </select>
-            <select {...register("courseId")} className="rounded-md border border-[#3b4354] bg-[#1c1f27] text-white px-3 py-2">
-              <option value="">Không gán khóa học</option>
-              {courses.map((c: any) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.title} (#{c.id})
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-2 text-white">
-              <input type="checkbox" {...register("isPinned")} className="rounded-sm" />
-              Hiển thị nổi bật (trang chủ)
-            </label>
-            <Button type="submit" disabled={formState.isSubmitting} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">Lưu thông báo</Button>
-          </form>
-        </Card>
-      </div>
-    </main>
+    <div className="min-h-screen bg-gray-50">
+      <main className="w-full max-w-[1920px] mx-auto p-6">
+        <div className="space-y-1 mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Tạo thông báo mới</h1>
+          <p className="text-sm text-gray-600">Soạn thảo và cấu hình thông báo</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <Card className="lg:col-span-2 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Tiêu đề thông báo</label>
+                <Input {...register("title")} placeholder="Nhập tiêu đề..." className="rounded-lg text-lg font-semibold" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Nội dung chi tiết</label>
+                <textarea {...register("content")} placeholder="Nhập nội dung..." className="rounded-lg border border-gray-200 bg-white px-3 py-2 min-h-[300px] w-full" />
+              </div>
+            </form>
+          </Card>
+
+          <div className="space-y-8">
+            <Card className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Đối tượng nhận</label>
+                  <select {...register("targetRole")} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 w-full">
+                    <option value="LEARNER">Học viên</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="ALL">Tất cả</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Loại thông báo</label>
+                  <select value={typeSelect} onChange={(e) => setTypeSelect(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 w-full">
+                    <option>Hệ thống</option>
+                    <option>Học tập</option>
+                    <option>Khuyến mãi</option>
+                    <option>Sự kiện</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Gán khóa học</label>
+                  <select {...register("courseId")} className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 w-full">
+                    <option value="">Không gán khóa học</option>
+                    {courses.map((c: any) => (
+                      <option key={c.id} value={String(c.id)}>
+                        {c.title} (#{c.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 text-gray-700">
+                  <input type="checkbox" {...register("isPinned")} className="rounded-sm" />
+                  Ghim lên đầu trang chủ
+                </label>
+              </div>
+            </Card>
+
+            <Card className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800">Mockup preview</h3>
+                  <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 border border-gray-200">{new Date().toLocaleString("vi-VN")}</span>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="text-sm text-gray-500 mb-1">{typeSelect}</div>
+                  <div className="font-semibold text-gray-900">{titlePreview || "Tiêu đề thông báo"}</div>
+                  <div className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{contentPreview || "Nội dung chi tiết sẽ hiển thị tại đây."}</div>
+                  <div className="mt-3 text-xs text-gray-500">
+                    {rolePreview === "LEARNER" ? "Gửi đến: Học viên" : rolePreview === "ADMIN" ? "Gửi đến: Admin" : "Gửi đến: Tất cả"}
+                    {pinnedPreview ? " • Được ghim" : ""}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSubmit(onSubmit)} disabled={formState.isSubmitting}>Gửi thông báo</Button>
+                  <Button variant="outline" onClick={() => alert("Lưu nháp thành công")}>Lưu nháp</Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

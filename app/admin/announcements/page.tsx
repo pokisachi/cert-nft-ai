@@ -1,14 +1,16 @@
 "use client";
-
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Search, Plus, Box, BookOpen, CalendarDays, Pencil, Trash2 } from "lucide-react";
 
 interface Announcement {
   id: number;
   title: string;
+  content?: string;
   targetRole: string | null;
   courseId: number | null;
   createdAt: string;
@@ -21,12 +23,11 @@ interface AnnouncementResponse {
 }
 
 export default function AdminAnnouncementsPage() {
-  // --- State ---
   const [page, setPage] = useState<number>(1);
   const [search, setSearch] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
 
-  // --- Query ---
   const { data, isLoading, refetch } = useQuery<AnnouncementResponse>({
     queryKey: ["admin-announcements", page, search, roleFilter],
     queryFn: async () => {
@@ -41,14 +42,44 @@ export default function AdminAnnouncementsPage() {
     },
   });
 
-  // --- Handler ---
+  const items = data?.data ?? [];
+
+  const computed = useMemo(() => {
+    const deriveType = (item: Announcement) => {
+      if (item.courseId) return "Học tập";
+      return "Hệ thống";
+    };
+    const filtered = items.filter((it) => {
+      const t = deriveType(it);
+      if (typeFilter && t !== typeFilter) return false;
+      return true;
+    });
+    return filtered.map((it) => ({
+      ...it,
+      typeLabel: deriveType(it),
+    }));
+  }, [items, typeFilter]);
+
+  const typeStyles = (label: string) => {
+    if (label === "Hệ thống") return "bg-purple-100 text-purple-700 border border-purple-200";
+    if (label === "Học tập") return "bg-blue-100 text-blue-700 border border-blue-200";
+    if (label === "Sự kiện") return "bg-orange-100 text-orange-700 border border-orange-200";
+    if (label === "Khuyến mãi") return "bg-pink-100 text-pink-700 border border-pink-200";
+    return "bg-gray-100 text-gray-700 border border-gray-200";
+    };
+
+  const roleBadge = (role: string | null) => {
+    const r = role || "ALL";
+    if (r === "ALL") return "bg-gray-900 text-white";
+    if (r === "LEARNER") return "bg-green-100 text-green-700 border border-green-200";
+    if (r === "ADMIN") return "bg-slate-100 text-slate-700 border border-slate-200";
+    return "bg-gray-100 text-gray-700 border border-gray-200";
+  };
+
   const handleDelete = async (id: number) => {
     const confirmDelete = confirm("Bạn có chắc muốn xóa thông báo này?");
     if (!confirmDelete) return;
-
-    const res = await fetch(`/api/admin/announcements/${id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
     if (res.ok) {
       alert("Đã xóa thông báo!");
       refetch();
@@ -57,93 +88,131 @@ export default function AdminAnnouncementsPage() {
     }
   };
 
-  // --- UI ---
   return (
-    <main className="p-6 bg-[#111318] text-white min-h-[calc(100vh-64px)]">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Quản lý thông báo</h1>
-        <Link href="/admin/announcements/new">
-          <Button className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">Tạo thông báo mới</Button>
-        </Link>
-      </div>
-
-      {/* Bộ lọc */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <input
-          type="text"
-          className="rounded-md border border-[#3b4354] bg-[#12151b] text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-          placeholder="Tìm kiếm theo tiêu đề..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="rounded-md border border-[#3b4354] bg-[#1c1f27] text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-        >
-          <option value="">Tất cả</option>
-          <option value="LEARNER">LEARNER</option>
-          <option value="ADMIN">ADMIN</option>
-          <option value="ALL">ALL</option>
-        </select>
-        <Button onClick={() => refetch()} className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-cyan-600 text-white">Lọc</Button>
-      </div>
-
-      {/* Bảng dữ liệu */}
-      <div className="border border-[#3b4354] rounded-2xl overflow-x-auto">
-        <table className="min-w-full text-sm bg-[#1c1f27] text-white">
-          <thead>
-            <tr className="bg-[#232734] text-white">
-              <th className="p-3 text-left border-b border-[#3b4354]">ID</th>
-              <th className="p-3 text-left border-b border-[#3b4354]">Tiêu đề</th>
-              <th className="p-3 text-left border-b border-[#3b4354]">Đối tượng</th>
-              <th className="p-3 text-left border-b border-[#3b4354]">Khóa học</th>
-              <th className="p-3 text-left border-b border-[#3b4354]">Ngày tạo</th>
-              <th className="p-3 text-center border-b border-[#3b4354]">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={6} className="text-center py-4 text-[#9da6b9]">Đang tải...</td>
-              </tr>
-            )}
-
-            {!isLoading && data?.data?.length === 0 && (
-              <tr>
-                <td colSpan={6} className="text-center py-4 text-[#9da6b9]">Không có thông báo nào.</td>
-              </tr>
-            )}
-
-            {data?.data?.map((item) => (
-              <tr key={item.id} className="hover:bg-[#242833]">
-                <td className="p-3 border-b border-[#2b3040] text-white/90">{item.id}</td>
-                <td className="p-3 border-b border-[#2b3040] text-white">{item.title}</td>
-                <td className="p-3 border-b border-[#2b3040] text-[#9da6b9]">{item.targetRole || '-'}</td>
-                <td className="p-3 border-b border-[#2b3040] text-[#9da6b9]">{item.courseId ?? '-'}</td>
-                <td className="p-3 border-b border-[#2b3040] text-[#9da6b9]">{new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                <td className="p-3 border-b border-[#2b3040]">
-                  <div className="flex justify-center gap-2">
-                    <Link href={`/admin/announcements/${item.id}`}>
-                      <Button variant="outline" size="sm" className="border-[#3b4354] text-white">Sửa</Button>
-                    </Link>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>Xóa</Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Phân trang */}
-      {data && data.total > 10 && (
-        <div className="flex justify-center items-center gap-4 mt-4 text-white">
-          <Button variant="outline" className="border-[#3b4354] text-white" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>← Trước</Button>
-          <span className="text-[#9da6b9]">Trang {page} / {Math.ceil(data.total / 10)}</span>
-          <Button variant="outline" className="border-[#3b4354] text-white" disabled={page * 10 >= data.total} onClick={() => setPage((p) => p + 1)}>Sau →</Button>
+    <div className="min-h-screen bg-gray-50">
+      <main className="w-full max-w-[1920px] mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold text-gray-800">Quản lý thông báo</h1>
+            <p className="text-sm text-gray-600">Notification Center</p>
+          </div>
+          <Link href="/admin/announcements/new">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Tạo thông báo
+            </Button>
+          </Link>
         </div>
-      )}
-    </main>
+
+        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
+          <div className="relative w-full lg:w-[600px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm theo tiêu đề..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+            />
+          </div>
+          <div className="flex items-center gap-3 w-full lg:w-auto">
+            <select
+              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">Loại thông báo: Tất cả</option>
+              <option value="Hệ thống">Hệ thống</option>
+              <option value="Học tập">Học tập</option>
+              <option value="Khuyến mãi">Khuyến mãi</option>
+            </select>
+            <select
+              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">Đối tượng: Tất cả</option>
+              <option value="ALL">All Users</option>
+              <option value="LEARNER">Students</option>
+              <option value="ADMIN">Admins</option>
+            </select>
+            <Button variant="outline" onClick={() => refetch()}>Lọc</Button>
+          </div>
+        </div>
+
+        <Card className="border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr className="text-xs font-semibold text-gray-500 uppercase">
+                  <th className="text-left px-4 py-2">Loại</th>
+                  <th className="text-left px-4 py-2">Tiêu đề & Nội dung</th>
+                  <th className="text-left px-4 py-2">Đối tượng</th>
+                  <th className="text-left px-4 py-2">Ngày gửi</th>
+                  <th className="text-left px-4 py-2">Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td className="px-4 py-3 text-gray-600" colSpan={5}>Đang tải...</td>
+                  </tr>
+                ) : computed.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-gray-600" colSpan={5}>Không có dữ liệu</td>
+                  </tr>
+                ) : (
+                  computed.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-200 hover:bg-blue-50/50">
+                      <td className="px-4 py-3">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded ${typeStyles(item.typeLabel)}`}>
+                          {item.typeLabel === "Hệ thống" ? (
+                            <Box className="w-4 h-4" />
+                          ) : item.typeLabel === "Học tập" ? (
+                            <BookOpen className="w-4 h-4" />
+                          ) : (
+                            <CalendarDays className="w-4 h-4" />
+                          )}
+                          <span className="text-xs font-medium">{item.typeLabel}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{item.title}</div>
+                        <div className="text-xs text-gray-600 truncate max-w-[600px]">{item.content || "-"}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs ${roleBadge(item.targetRole)}`}>
+                          {item.targetRole === "ALL" || !item.targetRole ? "All Users" : item.targetRole === "LEARNER" ? "Students" : "Admins"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {new Date(item.createdAt).toLocaleString("vi-VN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link href={`/admin/announcements/${item.id}`} className="p-2 rounded-md border border-gray-200 text-blue-600 hover:bg-blue-50" aria-label="Sửa">
+                            <Pencil className="w-4 h-4" />
+                          </Link>
+                          <button className="p-2 rounded-md border border-gray-200 text-red-600 hover:bg-red-50" onClick={() => handleDelete(item.id)} aria-label="Xóa">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {data && data.total > 10 && (
+          <div className="flex justify-center items-center gap-4">
+            <Button variant="outline" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>← Trước</Button>
+            <span className="text-gray-600">Trang {page} / {Math.ceil(data.total / 10)}</span>
+            <Button variant="outline" disabled={page * 10 >= data.total} onClick={() => setPage((p) => p + 1)}>Sau →</Button>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

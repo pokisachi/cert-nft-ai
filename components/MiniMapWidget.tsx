@@ -22,6 +22,7 @@ export default function MiniMapWidget() {
   const [userLoc, setUserLoc] = useState<LatLng | null>(null)
   const [nearest, setNearest] = useState<{ item: Branch | null; distance: number } | null>(null)
   const [geoError, setGeoError] = useState<string | null>(null)
+  const userLocRef = useRef<LatLng | null>(null)
 
   const LRef = useRef<typeof import('leaflet') | null>(null)
   const miniMapInst = useRef<any>(null)
@@ -36,6 +37,9 @@ export default function MiniMapWidget() {
   const [isRouting, setIsRouting] = useState(false)
   const [targetBranch, setTargetBranch] = useState<Branch | null>(null)
   const routingSeqRef = useRef(0)
+  const geoWatchIdRef = useRef<number | null>(null)
+  const bestAccuracyRef = useRef<number>(Number.POSITIVE_INFINITY)
+  const autoTargetRef = useRef(true)
 
   useEffect(() => {
     let ignore = false
@@ -54,17 +58,61 @@ export default function MiniMapWidget() {
         }
       }
     } catch {}
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
-        setUserLoc(loc)
-        try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
-      },
-      () => {
-        setGeoError('Không thể lấy vị trí của bạn. Vui lòng bật Location.')
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    )
+    const onSuccess = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude
+      const lon = pos.coords.longitude
+      const acc = typeof pos.coords.accuracy === 'number' ? pos.coords.accuracy : Number.POSITIVE_INFINITY
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return
+      if (Math.abs(lat) < 0.0001 && Math.abs(lon) < 0.0001) return
+      if (acc >= bestAccuracyRef.current && bestAccuracyRef.current !== Number.POSITIVE_INFINITY && userLocRef.current) return
+      bestAccuracyRef.current = acc
+      const loc = { latitude: lat, longitude: lon }
+      setUserLoc(loc)
+      userLocRef.current = loc
+      setGeoError(null)
+      try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
+    }
+    const tryIpFallback = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' })
+        const data = await res.json().catch(() => null)
+        const lat = Number(data?.latitude)
+        const lon = Number(data?.longitude)
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          const loc = { latitude: lat, longitude: lon }
+          setUserLoc(loc)
+          userLocRef.current = loc
+          setGeoError(null)
+          try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
+        }
+      } catch {}
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        () => {
+          setGeoError('Không thể lấy vị trí của bạn. Vui lòng bật Location.')
+          try {
+            navigator.geolocation.getCurrentPosition(
+              onSuccess,
+              () => {},
+              { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
+            )
+          } catch {}
+          tryIpFallback()
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      )
+      try {
+        geoWatchIdRef.current = navigator.geolocation.watchPosition(
+          onSuccess,
+          () => {},
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+        )
+      } catch {}
+      setTimeout(() => { if (!userLocRef.current) tryIpFallback() }, 5000)
+    } catch {}
     ;(async () => {
       if (!LRef.current) {
         const L = await import('leaflet')
@@ -73,6 +121,10 @@ export default function MiniMapWidget() {
     })()
     return () => {
       ignore = true
+      if (geoWatchIdRef.current != null) {
+        try { navigator.geolocation.clearWatch(geoWatchIdRef.current) } catch {}
+        geoWatchIdRef.current = null
+      }
     }
   }, [])
 
@@ -80,9 +132,9 @@ export default function MiniMapWidget() {
     if (userLoc && branches.length) {
       const n = findNearest(userLoc, branches)
       setNearest(n)
-      if (!targetBranch && n?.item) setTargetBranch(n.item)
+      if (autoTargetRef.current && n?.item) setTargetBranch(n.item)
     }
-  }, [userLoc, branches, targetBranch])
+  }, [userLoc, branches])
 
   const renderMarkers = useCallback((layerGroup: any) => {
     const L = LRef.current!
@@ -114,7 +166,7 @@ export default function MiniMapWidget() {
               ? `<br/>Khoảng cách: ${haversineKm(userLoc.latitude, userLoc.longitude, b.latitude, b.longitude).toFixed(2)} km`
               : '')
         )
-      try { mk.on('click', () => setTargetBranch(b)) } catch {}
+      try { mk.on('click', () => { autoTargetRef.current = false; setTargetBranch(b) }) } catch {}
     })
   }, [branches, userLoc, nearest])
 
@@ -386,7 +438,7 @@ export default function MiniMapWidget() {
           onClick={() => {
             if (!userLoc) {
               navigator.geolocation.getCurrentPosition(
-                (pos) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+                (pos) => { setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); setGeoError(null) },
                 () => setGeoError('Không thể lấy vị trí của bạn. Vui lòng bật Location.'),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
               )
@@ -400,7 +452,7 @@ export default function MiniMapWidget() {
             ? `Chi nhánh gần bạn nhất là: ${nearest.item.name} – ${nearest.distance.toFixed(2)} km`
             : 'Hãy bật vị trí để thấy chi nhánh gần bạn'}
         </button>
-        {geoError && (
+        {geoError && !userLoc && (
           <div className="mt-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
             {geoError}
           </div>

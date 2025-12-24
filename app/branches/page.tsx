@@ -12,7 +12,7 @@ export default function BranchesPage() {
   const [nearest, setNearest] = useState<{ item: Branch | null; distance: number } | null>(null)
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [geoError, setGeoError] = useState<string | null>(null)
+  const [, setGeoError] = useState<string | null>(null)
   const mapRef = useRef<HTMLDivElement | null>(null)
   const LRef = useRef<typeof import('leaflet') | null>(null)
   const mapInst = useRef<any>(null)
@@ -27,6 +27,9 @@ export default function BranchesPage() {
   const [branchDistances, setBranchDistances] = useState<Record<string, { distance: number; duration: number }>>({})
   const [isRouting, setIsRouting] = useState(false)
   const routingSeqRef = useRef(0)
+  const geoWatchIdRef = useRef<number | null>(null)
+  const bestAccuracyRef = useRef<number>(Number.POSITIVE_INFINITY)
+  const autoSelectedRef = useRef(true)
 
   useEffect(() => {
     fetch('/api/branches').then(r => r.json()).then((data: Branch[]) => setBranches(data))
@@ -40,31 +43,80 @@ export default function BranchesPage() {
         }
       }
     } catch {}
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
-        setUserLoc(loc)
-        userLocRef.current = loc
-        try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
-      },
-      () => setGeoError('Vui lòng bật Location để gợi ý chi nhánh gần bạn'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    )
+    const onSuccess = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude
+      const lon = pos.coords.longitude
+      const acc = typeof pos.coords.accuracy === 'number' ? pos.coords.accuracy : Number.POSITIVE_INFINITY
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return
+      if (Math.abs(lat) < 0.0001 && Math.abs(lon) < 0.0001) return
+      if (acc >= bestAccuracyRef.current && bestAccuracyRef.current !== Number.POSITIVE_INFINITY && userLocRef.current) return
+      bestAccuracyRef.current = acc
+      const loc = { latitude: lat, longitude: lon }
+      setUserLoc(loc)
+      userLocRef.current = loc
+      try { localStorage.setItem('userLoc', JSON.stringify(loc)) } catch {}
+    }
+    const tryIpFallback = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' })
+        const data = await res.json().catch(() => null)
+        const lat = Number(data?.latitude)
+        const lon = Number(data?.longitude)
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          const loc = { latitude: lat, longitude: lon }
+          setUserLoc(loc)
+          userLocRef.current = loc
+          try { localStorage.setItem('userLoc', JSON.stringify({ ...loc, accuracy: 10000 })) } catch {}
+        }
+      } catch {}
+    }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        () => {
+          setGeoError('Vui lòng bật Location để gợi ý chi nhánh gần bạn')
+          try {
+            navigator.geolocation.getCurrentPosition(
+              onSuccess,
+              () => {},
+              { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
+            )
+          } catch {}
+          tryIpFallback()
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      )
+      try {
+        geoWatchIdRef.current = navigator.geolocation.watchPosition(
+          onSuccess,
+          () => {},
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+        )
+      } catch {}
+      setTimeout(() => { if (!userLocRef.current) tryIpFallback() }, 8000)
+    } catch {}
     ;(async () => {
       const L = await import('leaflet');
       LRef.current = L
     })()
+    return () => {
+      if (geoWatchIdRef.current != null) {
+        try { navigator.geolocation.clearWatch(geoWatchIdRef.current) } catch {}
+        geoWatchIdRef.current = null
+      }
+    }
   }, [])
 
   useEffect(() => {
     if (userLoc && branches.length) {
       const near = findNearest(userLoc, branches)
       setNearest(near)
-      if (!selectedBranch && near?.item) {
+      if (autoSelectedRef.current && near?.item) {
         setSelectedBranch(near.item)
       }
     }
-  }, [userLoc, branches, selectedBranch])
+  }, [userLoc, branches])
 
   // Fetch route when userLoc or selectedBranch changes
   useEffect(() => {
@@ -122,8 +174,8 @@ export default function BranchesPage() {
       b.address.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      const da = branchDistances[a.id]?.distance ?? (haversineKm(userLoc?.latitude ?? a.latitude, userLoc?.longitude ?? a.longitude, a.latitude, a.longitude) * 1000)
-      const db = branchDistances[b.id]?.distance ?? (haversineKm(userLoc?.latitude ?? b.latitude, userLoc?.longitude ?? b.longitude, b.latitude, b.longitude) * 1000)
+      const da = branchDistances[a.id]?.distance ?? (userLoc ? haversineKm(userLoc.latitude, userLoc.longitude, a.latitude, a.longitude) * 1000 : Number.POSITIVE_INFINITY)
+      const db = branchDistances[b.id]?.distance ?? (userLoc ? haversineKm(userLoc.latitude, userLoc.longitude, b.latitude, b.longitude) * 1000 : Number.POSITIVE_INFINITY)
       return da - db
     })
 
@@ -174,7 +226,7 @@ export default function BranchesPage() {
            </div>`
         )
 
-      marker.on('click', () => setSelectedBranch(b))
+      marker.on('click', () => { autoSelectedRef.current = false; setSelectedBranch(b) })
       if (isSelected) marker.openPopup()
     })
 
@@ -377,6 +429,7 @@ export default function BranchesPage() {
       alert("Vui lòng bật vị trí để sử dụng tính năng chỉ đường");
       return;
     }
+    autoSelectedRef.current = false;
     setSelectedBranch(branch);
   };
 

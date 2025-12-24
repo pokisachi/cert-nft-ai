@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { User, BookOpen, Link as LinkIcon, Hash, Mail, Calendar, CheckCircle2, ExternalLink, Copy, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 import { getPublicClient } from "@/lib/onchain/viem";
 import { CERT_ABI } from "@/lib/onchain/mint";
 
@@ -33,9 +32,9 @@ type CertDetailData = {
 export default function CertDetailPage({
   params,
 }: {
-  params: { tokenId: string };
+  params: Promise<{ tokenId: string }>;
 }) {
-  const { tokenId } = params;
+  const { tokenId } = use(params);
   const [data, setData] = useState<CertDetailData | null>(null);
   const [onchainOwner, setOnchainOwner] = useState<string | null>(null);
   const [onchainStatus, setOnchainStatus] = useState<"ACTIVE" | "BURNED" | null>(null);
